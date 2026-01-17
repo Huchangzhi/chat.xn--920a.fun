@@ -8,6 +8,7 @@ import {
   QWenLogo,
   OpenAILogo,
 } from "@/components/logo";
+import { Chat } from "@ai-sdk/react";
 
 export interface Model {
   id: string;
@@ -122,9 +123,81 @@ export const modelList: Model[] = [
 export const modelList: Model[] = [
   // OpenAI 模型示例
   {
-    id: "gpt-4o",
-    name: "GPT-4o",
+    id: "gpt-4o-mini",
+    name: "GPT-4o-mini",
     logo: <OpenAILogo />,
+    type: "Text Generation",
+    input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "Qwen/Qwen3-235B-A22B",
+    name: "Qwen3",
+    logo: <QWenLogo />,
+    type: "Text Generation",
+    // input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "qwen3-think",
+    name: "Qwen3推理加强版",
+    logo: <QWenLogo />,
+    type: "Text Generation",
+    // input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "qwen3-coder",
+    name: "Qwen3代码模型",
+    logo: <QWenLogo />,
+    type: "Text Generation",
+    // input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "Qwen/Qwen2.5-VL-72B-Instruct",
+    name: "Qwen2.5视觉模型",
+    logo: <QWenLogo />,
+    type: "Text Generation",
+    input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "hunyuan-lite",
+    name: "腾讯混元(暂无logo)",
+    logo: <OpenAILogo />,
+    type: "Text Generation",
+    // input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "glm-4-flash",
+    name: "智谱",
+    logo: <OpenAILogo />,
+    type: "Text Generation",
+    // input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "deepseek-ai/DeepSeek-R1",
+    name: "Deepseek-R1",
+    logo: <DeepSeekLogo />,
+    type: "Text Generation",
+    // input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+  {
+    id: "gemini-2.5-flash",
+    name: "gemini-2.5-flash",
+    logo: <GoogleLogo />,
     type: "Text Generation",
     input: ["image"],
     provider: "openai",
