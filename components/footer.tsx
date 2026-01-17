@@ -9,13 +9,13 @@ const Footer = ({ classname }: { classname?: string }) => {
         "text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4",
       )}
     >
-      v{version} ·{" "}
+      基于v{version} ·{" "}
       <a
         href="https://github.com/Jazee6/cloudflare-ai-web"
         target="_blank"
         rel="noopener"
       >
-        Github
+        cloudflare-ai-web修改
       </a>
     </footer>
   );

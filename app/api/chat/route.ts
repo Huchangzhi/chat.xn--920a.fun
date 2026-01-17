@@ -6,7 +6,7 @@ import {
   streamText,
   wrapLanguageModel,
 } from "ai";
-import { aigateway, google, workersai } from "@/app/api";
+import { aigateway, google, workersai, openai } from "@/app/api";
 import type { Message } from "@/lib/db";
 import type { Model } from "@/lib/models";
 
@@ -46,6 +46,15 @@ export async function POST(request: Request) {
       //     executeCode: executeCode(),
       //   });
       // }
+      break;
+    case "openai":
+      providerModel = wrapLanguageModel({
+        model: openai.chat(model),
+        middleware: extractReasoningMiddleware({
+          tagName: "think", // 使用think标签来识别思考部分，对应 [[thinking]] 和 [[/thinking]] 标签
+          startWithReasoning: false, // 默认不开启推理模式
+        }),
+      });
       break;
   }
 

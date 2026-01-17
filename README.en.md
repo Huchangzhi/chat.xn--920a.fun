@@ -39,13 +39,15 @@ docker run -d --name cloudflare-ai-web \
 
 | Name                                | Description                      | Required |
 |-------------------------------------|----------------------------------|----------|
-| CF_ACCOUNT_ID                       | Cloudflare Account ID            | ✅        |  
-| CF_WORKERS_AI_TOKEN                 | Cloudflare Workers AI Token      | ✅        |
+| CF_ACCOUNT_ID                       | Cloudflare Account ID            |          |
+| CF_WORKERS_AI_TOKEN                 | Cloudflare Workers AI Token      |          |
 | APP_PASSWORD                        | Access Password                  |          |
 | CF_AI_GATEWAY_NAME                  | Cloudflare AI Gateway Name       |          |
 | CF_AI_GATEWAY_TOKEN                 | Cloudflare AI Gateway Auth Token |          |
 | NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS | Cloudflare AI Gateway Providers  |          |
 | GOOGLE_API_KEY                      | Google AI Studio Token           |          |
+| OPENAI_API_KEY                      | OpenAI API Key                   |          |
+| OPENAI_BASE_URL                     | OpenAI API Base URL              |          |
 
 #### CF_WORKERS_AI_TOKEN
 
@@ -56,6 +58,7 @@ docker run -d --name cloudflare-ai-web \
 Supported providers:
 
 - google
+- openai
 
 Multiple providers are separated by commas
 

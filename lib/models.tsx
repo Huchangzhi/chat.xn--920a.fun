@@ -6,6 +6,7 @@ import {
   MetaLogo,
   MistralLogo,
   QWenLogo,
+  OpenAILogo,
 } from "@/components/logo";
 
 export interface Model {
@@ -14,7 +15,7 @@ export interface Model {
   logo: ReactNode;
   type: "Text Generation" | "Text to Image";
   input?: Array<"image" | "search">;
-  provider: "workers-ai" | "google";
+  provider: "workers-ai" | "google" | "openai";
   tag?: string[];
 }
 
@@ -22,6 +23,8 @@ const defaultLogo = (
   <div className="bg-linear-to-br from-secondary to-primary size-4 rounded-full"></div>
 );
 
+// 注释掉所有现有模型
+/*
 export const modelList: Model[] = [
   {
     id: "gemini-2.5-flash",
@@ -113,9 +116,25 @@ export const modelList: Model[] = [
     provider: "workers-ai",
   },
 ];
+*/
+
+// 添加新的模型列表，包括OpenAI的gpt-4o
+export const modelList: Model[] = [
+  // OpenAI 模型示例
+  {
+    id: "gpt-4o",
+    name: "GPT-4o",
+    logo: <OpenAILogo />,
+    type: "Text Generation",
+    input: ["image"],
+    provider: "openai",
+    tag: ["new"],
+  },
+];
 
 const providers = process.env.NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS?.split(",");
 
+// 修改过滤逻辑，使其不依赖于环境变量
 export const models = modelList.filter(
-  (i) => providers?.includes(i.provider) || i.provider === "workers-ai",
+  (i) => !providers || providers.includes(i.provider) || i.provider === "openai",
 );
