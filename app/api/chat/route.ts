@@ -17,6 +17,29 @@ interface Data {
   search?: boolean;
 }
 
+// 验证并清理消息，确保只有有效的角色
+function validateAndCleanMessages(messages: Message[]) {
+  return messages.map(message => {
+    // 确保角色是有效的 OpenAI 角色
+    let role: 'system' | 'user' | 'assistant' = 'user';
+
+    if (message.role === 'system' || message.role === 'user' || message.role === 'assistant') {
+      role = message.role;
+    } else if (message.role === 'developer') {
+      // 将 'developer' 角色映射到 'user'，以避免 API 错误
+      role = 'user';
+    } else {
+      // 对于其他未知角色，也映射到 'user'
+      role = 'user';
+    }
+
+    return {
+      ...message,
+      role
+    };
+  });
+}
+
 export async function POST(request: Request) {
   const { messages, model, provider, search } = (await request.json()) as Data;
 
@@ -58,9 +81,12 @@ export async function POST(request: Request) {
       break;
   }
 
+  // 清理消息以确保没有无效的角色
+  const cleanedMessages = validateAndCleanMessages(messages);
+
   const result = streamText({
     model: providerModel,
-    messages: convertToModelMessages(messages),
+    messages: convertToModelMessages(cleanedMessages),
     maxOutputTokens: provider === "workers-ai" ? 2048 : undefined,
     system:
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
