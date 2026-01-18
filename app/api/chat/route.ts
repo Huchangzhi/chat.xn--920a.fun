@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       // }
       break;
     case "openai":
+      // 使用 wrapLanguageModel 包装自定义实现
       providerModel = wrapLanguageModel({
         model: openai.chat(model),
         middleware: extractReasoningMiddleware({
