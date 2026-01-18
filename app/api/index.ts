@@ -1,5 +1,4 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
 import { createAiGateway } from "ai-gateway-provider";
 import { createWorkersAI } from "workers-ai-provider";
 
@@ -16,10 +15,4 @@ export const workersai = createWorkersAI({
 
 export const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_API_KEY,
-});
-
-// 使用原始的 OpenAI 实现，但我们会修改 route.ts 来处理自定义 API
-export const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL || undefined, // 允许自定义OpenAI API基础URL，默认为官方地址
 });
