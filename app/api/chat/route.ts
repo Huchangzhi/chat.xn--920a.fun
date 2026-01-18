@@ -1,12 +1,8 @@
-import {
-  convertToModelMessages,
-  streamText,
-  wrapLanguageModel,
-  extractReasoningMiddleware,
-} from "ai";
+import { streamText, convertToModelMessages, wrapLanguageModel, extractReasoningMiddleware } from "ai";
 import { aigateway, google, workersai } from "@/app/api";
 import type { Message } from "@/lib/db";
 import type { Model } from "@/lib/models";
+import { createParser } from 'eventsource-parser';
 
 interface Data {
   messages: Message[];
@@ -38,10 +34,67 @@ function validateAndCleanMessages(messages: Message[]) {
   });
 }
 
-// 直接使用 fetch 实现 OpenAI API 调用
-async function callOpenAIApi(messages: Message[], model: string, provider: string) {
-  const controller = new AbortController();
-  const { signal } = controller;
+// OpenAI 响应解析器
+function openaiParser(chunk: string) {
+  try {
+    const data = JSON.parse(chunk);
+
+    // 检查是否有错误
+    if (data.error) {
+      throw new Error(data.error.message || 'API Error');
+    }
+
+    // 处理正常的响应
+    if (data.choices && data.choices.length > 0) {
+      const choice = data.choices[0];
+      // 如果有 delta（流式响应）
+      if (choice.delta && choice.delta.content !== undefined) {
+        return choice.delta.content || '';
+      }
+      // 如果有 message（非流式响应）
+      if (choice.message && choice.message.content !== undefined) {
+        return choice.message.content || '';
+      }
+    } else if (data.choices === null || (Array.isArray(data.choices) && data.choices.length === 0)) {
+      // 特殊处理：如果 choices 是 null 或空数组，可能是 API 返回格式不同
+      // 尝试直接从顶层获取内容
+      if (data.content) {
+        return data.content || '';
+      }
+    }
+
+    return '';
+  } catch (e) {
+    console.error('Error parsing OpenAI response:', e, chunk);
+    return '';
+  }
+}
+
+// 处理 OpenAI API 调用
+async function handleOpenAIRequest(messages: Message[], model: string) {
+  const cleanedMessages = validateAndCleanMessages(messages);
+
+  // 提取消息内容
+  const processedMessages = cleanedMessages.map(m => {
+    let content = '';
+    if (Array.isArray(m.parts)) {
+      content = m.parts
+        .map(part => {
+          if ('text' in part && typeof part.text === 'string') {
+            return part.text;
+          }
+          return '';
+        })
+        .join('');
+    } else {
+      content = 'Empty message';
+    }
+
+    return {
+      role: m.role,
+      content
+    };
+  });
 
   const apiKey = process.env.OPENAI_API_KEY;
   const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
@@ -49,38 +102,12 @@ async function callOpenAIApi(messages: Message[], model: string, provider: strin
   // 构建 API URL
   const apiUrl = `${baseURL.endsWith('/v1') ? baseURL : `${baseURL}/v1`}/chat/completions`;
 
-  // 清理消息以确保没有无效的角色
-  const cleanedMessages = validateAndCleanMessages(messages);
-
   const requestBody = {
     model,
-    messages: cleanedMessages.map(m => {
-      // UIMessage 使用 parts 数组存储内容
-      let content = '';
-      if (Array.isArray(m.parts)) {
-        content = m.parts
-          .map(part => {
-            if ('text' in part && typeof part.text === 'string') {
-              return part.text;
-            }
-            return '';
-          })
-          .join('');
-      } else {
-        content = 'Empty message';
-      }
-
-      return {
-        role: m.role,
-        content
-      };
-    }),
+    messages: processedMessages,
     stream: true,
     temperature: 0.7,
   };
-
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
 
   const response = await fetch(apiUrl, {
     method: 'POST',
@@ -92,86 +119,61 @@ async function callOpenAIApi(messages: Message[], model: string, provider: strin
       'Connection': 'keep-alive',
     },
     body: JSON.stringify(requestBody),
-    signal,
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const errorBody = await response.text();
+    return new Response(`Error: ${response.status} - ${errorBody}`, {
+      status: response.status
+    });
   }
 
   if (!response.body) {
-    throw new Error('Response body is empty');
+    return new Response('Response body is empty', { status: 500 });
   }
 
-  const reader = response.body.getReader();
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
-  // 创建一个可读流来处理服务器发送的事件
   const readableStream = new ReadableStream({
     async start(controller) {
-      let buffer = '';
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6); // Remove 'data: ' prefix
-
-              if (data === '[DONE]') {
-                controller.close();
-                return;
-              }
-
-              try {
-                const parsed = JSON.parse(data);
-
-                // 检查是否有错误
-                if (parsed.error) {
-                  console.error('API Error:', parsed.error);
-                  controller.error(new Error(parsed.error.message || 'API Error'));
-                  return;
-                }
-
-                // 处理正常的响应
-                if (parsed.choices && parsed.choices.length > 0) {
-                  const choice = parsed.choices[0];
-
-                  if (choice.delta?.content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: choice.delta.content })}\n\n`));
-                  }
-
-                  if (choice.finish_reason) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
-                  }
-                } else if (parsed.choices === null || (Array.isArray(parsed.choices) && parsed.choices.length === 0)) {
-                  // 特殊处理：如果 choices 是 null 或空数组，可能是 API 返回格式不同
-                  // 尝试直接从顶层获取内容
-                  if (parsed.content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: parsed.content })}\n\n`));
-                  }
-                }
-              } catch (e) {
-                console.warn('Failed to parse SSE data:', e, data);
-                // 忽略无效的 JSON 行
-                continue;
-              }
-            }
+      const parser = createParser({
+        onEvent: (event) => {
+          if (event.data === '[DONE]') {
+            controller.close();
+            return;
           }
+
+          try {
+            const parsed = JSON.parse(event.data);
+            if (parsed.error) {
+              controller.error(new Error(parsed.error.message || 'API Error'));
+              return;
+            }
+
+            const content = openaiParser(event.data);
+            if (content) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+            }
+          } catch (e) {
+            console.error('Error processing event:', e);
+            controller.error(e);
+          }
+        },
+        onError: (error) => {
+          console.error('Parser error:', error);
+          controller.error(error);
         }
-      } catch (error) {
-        controller.error(error);
-      } finally {
-        controller.close();
-        reader.releaseLock();
+      });
+
+      for await (const chunk of response.body as any) {
+        const str = decoder.decode(chunk, { stream: true });
+        parser.feed(str);
       }
     },
+    cancel() {
+      console.log('Stream cancelled');
+    }
   });
 
   return new Response(readableStream, {
@@ -188,7 +190,7 @@ export async function POST(request: Request) {
   // 根据提供商选择处理方式
   if (provider === 'openai') {
     // 直接处理 OpenAI 请求
-    return await callOpenAIApi(messages, model, provider);
+    return await handleOpenAIRequest(messages, model);
   }
 
   // 对于其他提供商，使用原有逻辑
