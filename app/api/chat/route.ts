@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
 
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
+    const reader = response.body.getReader();
 
     const readableStream = new ReadableStream({
       async start(controller) {
@@ -131,13 +132,23 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        for await (const chunk of response.body as AsyncIterable<Uint8Array>) {
-          const str = decoder.decode(chunk, { stream: true });
-          parser.feed(str);
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const str = decoder.decode(value, { stream: true });
+            parser.feed(str);
+          }
+        } catch (e) {
+          console.error("Error reading stream:", e);
+          controller.error(e);
+        } finally {
+          reader.releaseLock();
         }
       },
       cancel() {
         console.log("Stream cancelled");
+        reader.releaseLock();
       },
     });
 
