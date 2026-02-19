@@ -1,12 +1,12 @@
 import { Streamdown } from "streamdown";
-import type { Message } from "@/lib/db";
+import type { MessagePart } from "@/lib/db";
 
 const AssistantChatItem = ({
   className,
   parts,
 }: {
   className?: string;
-  parts: Message["parts"];
+  parts: MessagePart[];
 }) => {
   return (
     <div className={className}>

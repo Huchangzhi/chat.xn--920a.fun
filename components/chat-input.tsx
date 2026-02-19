@@ -12,17 +12,11 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import type { Model } from "@/lib/models";
 import { cn } from "@/lib/utils";
+import type { FilePart } from "@/lib/db";
 
 export interface onSendMessageProps {
   text: string;
-  files?: FileUIPart[];
-}
-
-export interface FileUIPart {
-  type: "file";
-  filename: string;
-  mediaType: string;
-  url: string;
+  files?: FilePart[];
 }
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error";
@@ -68,7 +62,7 @@ const ChatInput = ({
     },
   });
   const input = form.watch("input");
-  const [files, setFiles] = useState<FileUIPart[]>([]);
+  const [files, setFiles] = useState<FilePart[]>([]);
 
   if (selectedModel && !selectedModel.input?.includes("image")) {
     if (files.length > 0) {
@@ -125,7 +119,7 @@ const ChatInput = ({
 
   const onPaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const clipboardItems = event.clipboardData.items;
-    const newFiles: FileUIPart[] = [];
+    const newFiles: FilePart[] = [];
 
     for (let i = 0; i < clipboardItems.length; i++) {
       const item = clipboardItems[i];

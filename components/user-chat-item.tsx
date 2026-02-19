@@ -1,4 +1,4 @@
-import type { Message } from "@/lib/db";
+import type { MessagePart } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 const UserChatItem = ({
@@ -6,7 +6,7 @@ const UserChatItem = ({
   parts,
 }: {
   className?: string;
-  parts: Message["parts"];
+  parts: MessagePart[];
 }) => {
   return (
     <div className={cn("space-y-1 flex flex-col", className)}>

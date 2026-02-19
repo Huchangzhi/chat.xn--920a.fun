@@ -6,13 +6,19 @@ export interface Session {
   updatedAt: Date;
 }
 
-export interface MessagePart {
-  type: string;
-  text?: string;
-  mediaType?: string;
-  filename?: string;
-  url?: string;
+export interface TextPart {
+  type: "text";
+  text: string;
 }
+
+export interface FilePart {
+  type: "file";
+  filename: string;
+  mediaType: string;
+  url: string;
+}
+
+export type MessagePart = TextPart | FilePart;
 
 export type Message = {
   id: string;
