@@ -1,7 +1,5 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, generateId } from "ai";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ChevronDown } from "lucide-react";
 import { debounce } from "next/dist/server/utils";
@@ -21,6 +19,12 @@ import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { db, type Message } from "@/lib/db";
 import { type Model, defaultModels } from "@/lib/models";
+
+type ChatStatus = "submitted" | "streaming" | "ready" | "error";
+
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 15);
+}
 
 const Page = () => {
   const { session_id } = useParams() as { session_id: string };
@@ -44,6 +48,9 @@ const Page = () => {
 
   const [selectedModel, setSelectedModel] = useState<Model>(defaultModels[0]);
 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [status, setStatus] = useState<ChatStatus>("ready");
+
   useEffect(() => {
     fetch("/api/models")
       .then((res) => res.json())
@@ -58,59 +65,146 @@ const Page = () => {
       .catch(console.error);
   }, []);
 
-  const { messages, sendMessage, status, setMessages, stop, regenerate } =
-    useChat<Message>({
-      transport: new DefaultChatTransport({
-        api: "/api/chat",
-        prepareSendMessagesRequest: ({ messages }) => {
-          return {
-            headers: {
-              Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
-            },
-            body: {
-              messages: messages.slice(-10),
-              model: selectedModel.id,
-            },
-          };
-        },
-      }),
-      onFinish: ({ message, isError }) => {
-        if (!isError) {
-          db.message.add({
-            ...message,
-            sessionId: session_id,
-            createdAt: new Date(),
-          });
-          db.session.update(session_id, {
-            updatedAt: new Date(),
-          });
-        }
-      },
-      onError: async (error) => {
-        if (error.message === "Unauthorized") {
-          setAuthDialogOpen(true);
-          return;
-        }
-        toast.error("Unknown error occurred. Please try again.");
-      },
-    });
-
-  const scrollToBottom = useCallback(
-    (behavior: "smooth" | "instant" = "smooth") => {
-      chatListRef.current?.scrollTo({
-        top: chatListRef.current.scrollHeight,
-        behavior,
-      });
-    },
-    [],
-  );
-
   useEffect(() => {
     if (initMessages && !loaded) {
       setMessages(initMessages);
       setLoaded(true);
     }
-  }, [initMessages, setMessages, loaded]);
+  }, [initMessages, loaded]);
+
+  const sendMessage = async (data: onSendMessageProps) => {
+    const { text, files } = data;
+    setStatus("submitted");
+
+    const messageParts = [
+      ...(files ?? []),
+      {
+        type: "text" as const,
+        text,
+      },
+    ];
+
+    const userMessage: Message = {
+      id: generateId(),
+      parts: messageParts,
+      role: "user",
+      sessionId: session_id,
+      createdAt: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    await db.message.add(userMessage);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].slice(-10).map((m) => ({
+            role: m.role,
+            parts: m.parts,
+          })),
+          model: selectedModel.id,
+        }),
+      });
+
+      if (response.status === 401) {
+        setAuthDialogOpen(true);
+        setStatus("error");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      if (!response.body) {
+        throw new Error("Response body is empty");
+      }
+
+      setStatus("streaming");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage: Message = {
+        id: generateId(),
+        parts: [{ type: "text", text: "" }],
+        role: "assistant",
+        sessionId: session_id,
+        createdAt: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.content) {
+                assistantMessage.parts[0].text += data.content;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessage.id ? assistantMessage : m,
+                  ),
+                );
+              }
+            } catch {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+
+      // Save to database
+      await db.message.add(assistantMessage);
+      await db.session.update(session_id, {
+        updatedAt: new Date(),
+      });
+      setStatus("ready");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setStatus("error");
+      if (error instanceof Error && error.message !== "Unauthorized") {
+        toast.error(error.message);
+      }
+    }
+  };
+
+  const stop = () => {
+    setStatus("ready");
+  };
+
+  const regenerate = async () => {
+    const lastUserMessage = messages
+      .slice()
+      .reverse()
+      .find((m) => m.role === "user");
+    if (lastUserMessage) {
+      const textPart = lastUserMessage.parts.find((p) => p.type === "text");
+      if (textPart) {
+        // Remove last assistant message
+        const lastAssistantMessage = messages
+          .slice()
+          .reverse()
+          .find((m) => m.role === "assistant");
+        if (lastAssistantMessage) {
+          await db.message.delete(lastAssistantMessage.id);
+          setMessages((prev) => prev.filter((m) => m.id !== lastAssistantMessage.id));
+        }
+        await sendMessage({ text: textPart.text || "" });
+      }
+    }
+  };
 
   useEffect(() => {
     if (isNew && initMessages) {
@@ -124,7 +218,7 @@ const Page = () => {
         history.replaceState(null, "", location.pathname);
       }
     }
-  }, [isNew, initMessages, sendMessage]);
+  }, [isNew, initMessages]);
 
   useEffect(() => {
     if (status === "streaming" && chatListRef.current && messages.length) {
@@ -137,7 +231,17 @@ const Page = () => {
         scrollToBottom();
       }
     }
-  }, [status, messages, scrollToBottom]);
+  }, [status, messages]);
+
+  const scrollToBottom = useCallback(
+    (behavior: "smooth" | "instant" = "smooth") => {
+      chatListRef.current?.scrollTo({
+        top: chatListRef.current.scrollHeight,
+        behavior,
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     const onScroll = debounce(() => {

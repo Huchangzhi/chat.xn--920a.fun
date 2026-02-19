@@ -3,8 +3,9 @@ import { cn } from "@/lib/utils";
 import UserChatItem from "@/components/user-chat-item";
 import AssistantChatItem from "@/components/assistant-chat-item";
 import { TextShimmer } from "@/components/ui/text-shimmer";
-import type { ChatStatus } from "ai";
 import { memo } from "react";
+
+type ChatStatus = "submitted" | "streaming" | "ready" | "error";
 
 const ChatList = memo(
   ({

@@ -1,4 +1,3 @@
-import type { UIMessage } from "ai";
 import Dexie, { type EntityTable } from "dexie";
 
 export interface Session {
@@ -7,10 +6,21 @@ export interface Session {
   updatedAt: Date;
 }
 
-export type Message = UIMessage & {
+export interface MessagePart {
+  type: string;
+  text?: string;
+  mediaType?: string;
+  filename?: string;
+  url?: string;
+}
+
+export type Message = {
+  id: string;
+  parts: MessagePart[];
+  role: "user" | "assistant";
   sessionId: string;
   createdAt: Date;
-  search?: boolean;
+  metadata?: Record<string, unknown>;
 };
 
 export interface ImagesDataPart {
@@ -25,5 +35,5 @@ export const db = new Dexie("CF_AI_DB") as Dexie & {
 
 db.version(1).stores({
   session: "&id, name, updatedAt",
-  message: "&id, sessionId ,role, metadata, parts, &createdAt",
+  message: "&id, sessionId, role, createdAt",
 });

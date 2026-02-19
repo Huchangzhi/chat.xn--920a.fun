@@ -1,9 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { ChatStatus, FileUIPart } from "ai";
 import { ArrowUp, Loader2, Paperclip, RefreshCw, Square, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -18,6 +17,15 @@ export interface onSendMessageProps {
   text: string;
   files?: FileUIPart[];
 }
+
+export interface FileUIPart {
+  type: "file";
+  filename: string;
+  mediaType: string;
+  url: string;
+}
+
+type ChatStatus = "submitted" | "streaming" | "ready" | "error";
 
 const formSchema = z.object({
   input: z.string().trim().min(1),
@@ -62,11 +70,11 @@ const ChatInput = ({
   const input = form.watch("input");
   const [files, setFiles] = useState<FileUIPart[]>([]);
 
-  useEffect(() => {
-    if (!selectedModel?.input?.includes("image")) {
+  if (selectedModel && !selectedModel.input?.includes("image")) {
+    if (files.length > 0) {
       setFiles([]);
     }
-  }, [selectedModel]);
+  }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     form.resetField("input");

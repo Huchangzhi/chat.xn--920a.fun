@@ -1,12 +1,15 @@
 "use client";
 
-import { generateId } from "ai";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
 import { db } from "@/lib/db";
 import { type Model, defaultModels } from "@/lib/models";
+
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 15);
+}
 
 export default function Home() {
   const router = useRouter();
