@@ -1,7 +1,7 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { Cog, ImageIcon, MoreHorizontal, Plus } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -30,9 +30,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -93,39 +91,6 @@ const AppSidebar = () => {
   return (
     <>
       <Sidebar>
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/image"}>
-                <Link href="/image">
-                  <ImageIcon />
-                  Image
-                  <LoadingIndicator className="ml-auto" />
-                </Link>
-              </SidebarMenuButton>
-
-              {pathname === "/image" && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuAction>
-                      <MoreHorizontal />
-                    </SidebarMenuAction>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" align="start">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setDeleteConfirmOpen(true);
-                        setSessionId("image");
-                      }}
-                    >
-                      <span className="text-destructive">Delete</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
         <SidebarContent>
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
@@ -170,10 +135,6 @@ const AppSidebar = () => {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem className="flex items-center">
-              <Button size="icon" variant="ghost" className="size-8" disabled>
-                <Cog />
-              </Button>
-
               <Link href="/" className="ml-auto">
                 <Button variant="ghost">
                   New Chat

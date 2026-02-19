@@ -25,25 +25,6 @@ import {
 } from "@/components/ui/popover";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import type { Model } from "@/lib/models";
-import { getStoredModelId, type StoredModelKey } from "@/lib/utils";
-
-const getGroupedModels = (models: Model[]) => {
-  const groupedModels: {
-    type: Model["type"];
-    models: Model[];
-  }[] = [];
-
-  for (const model of models) {
-    let group = groupedModels.find((g) => g.type === model.type);
-    if (!group) {
-      group = { type: model.type, models: [] as Model[] };
-      groupedModels.push(group);
-    }
-    group.models.push(model);
-  }
-
-  return groupedModels;
-};
 
 const ModelList = ({
   models,
@@ -54,39 +35,32 @@ const ModelList = ({
   setOpen: (open: boolean) => void;
   setSelectedModel: (models: Model) => void;
 }) => {
-  const groupedModels = getGroupedModels(models);
-
   return (
     <Command>
       <CommandInput placeholder="Filter models..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        {groupedModels.map(({ type, models }) => (
-          <CommandGroup key={type} heading={type}>
-            {models.map((model) => (
-              <CommandItem
-                key={model.id}
-                value={model.id}
-                onSelect={(value) => {
-                  setSelectedModel(
-                    models.find((m) => m.id === value) ?? models[0],
-                  );
-                  setOpen(false);
-                }}
-              >
-                <span className="size-4 flex items-center justify-center">
-                  {model.logo}
-                </span>
-                {model.name}
-                {model.tag?.map((item) => (
-                  <Badge key={item} variant="outline" className="ml-auto">
-                    {item}
-                  </Badge>
-                ))}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        ))}
+        <CommandGroup heading="Models">
+          {models.map((model) => (
+            <CommandItem
+              key={model.id}
+              value={model.id}
+              onSelect={(value) => {
+                setSelectedModel(
+                  models.find((m) => m.id === value) ?? models[0],
+                );
+                setOpen(false);
+              }}
+            >
+              {model.name}
+              {model.tag?.map((item) => (
+                <Badge key={item} variant="outline" className="ml-auto">
+                  {item}
+                </Badge>
+              ))}
+            </CommandItem>
+          ))}
+        </CommandGroup>
       </CommandList>
     </Command>
   );
@@ -94,12 +68,10 @@ const ModelList = ({
 
 function ComboBoxResponsive({
   models,
-  modalKey,
   selectedModel,
   setSelectedModel,
 }: {
   models: Model[];
-  modalKey: StoredModelKey;
   selectedModel?: Model;
   setSelectedModel: (model: Model) => void;
 }) {
@@ -107,17 +79,10 @@ function ComboBoxResponsive({
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
-    setSelectedModel(
-      models.find((item) => item.id === getStoredModelId(modalKey)) ??
-        models[0],
-    );
-  }, [models, modalKey, setSelectedModel]);
-
-  useEffect(() => {
     if (selectedModel) {
-      localStorage.setItem(modalKey, selectedModel.id);
+      localStorage.setItem("CF_AI_MODEL", selectedModel.id);
     }
-  }, [selectedModel, modalKey]);
+  }, [selectedModel]);
 
   if (isDesktop) {
     return (
@@ -125,9 +90,6 @@ function ComboBoxResponsive({
         <PopoverTrigger asChild>
           {selectedModel && (
             <Button variant="ghost">
-              <span className="size-4 flex items-center justify-center">
-                {selectedModel.logo}
-              </span>
               {selectedModel.name}
               <ChevronDown />
             </Button>
@@ -149,9 +111,6 @@ function ComboBoxResponsive({
       <DrawerTrigger asChild>
         {selectedModel && (
           <Button variant="ghost">
-            <span className="size-4 flex items-center justify-center">
-              {selectedModel.logo}
-            </span>
             {selectedModel.name}
             <ChevronDown />
           </Button>
@@ -173,22 +132,19 @@ function ComboBoxResponsive({
 
 const ModelSelect = ({
   models,
-  modalKey,
   selectedModel,
   setSelectedModel,
 }: {
   models: Model[];
-  modalKey: StoredModelKey;
   selectedModel?: Model;
   setSelectedModel: (model: Model) => void;
 }) => {
   return (
     <ComboBoxResponsive
       models={models}
-      modalKey={modalKey}
       selectedModel={selectedModel}
       setSelectedModel={setSelectedModel}
-    ></ComboBoxResponsive>
+    />
   );
 };
 

@@ -12,7 +12,6 @@ import {
   useEffect,
   useRef,
   useState,
-  ViewTransition,
 } from "react";
 import { toast } from "sonner";
 import AuthDialog from "@/components/auth-dialog";
@@ -21,8 +20,7 @@ import ChatList from "@/components/chat-list";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { db, type Message } from "@/lib/db";
-import { models } from "@/lib/models";
-import { getStoredModel } from "@/lib/utils";
+import { type Model, defaultModels } from "@/lib/models";
 
 const Page = () => {
   const { session_id } = useParams() as { session_id: string };
@@ -30,6 +28,7 @@ const Page = () => {
   const isNew = searchParams.get("new") !== null;
   const [loaded, setLoaded] = useState(isNew);
   const [showToBottom, setShowToBottom] = useState(false);
+  const [models, setModels] = useState<Model[]>(defaultModels);
   const chatListRef = useRef<HTMLDivElement>(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
@@ -43,22 +42,34 @@ const Page = () => {
     [session_id],
   );
 
+  const [selectedModel, setSelectedModel] = useState<Model>(defaultModels[0]);
+
+  useEffect(() => {
+    fetch("/api/models")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.length > 0) {
+          setModels(data);
+          const storedModelId = localStorage.getItem("CF_AI_MODEL");
+          const storedModel = data.find((m: Model) => m.id === storedModelId);
+          setSelectedModel(storedModel || data[0]);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   const { messages, sendMessage, status, setMessages, stop, regenerate } =
     useChat<Message>({
       transport: new DefaultChatTransport({
         api: "/api/chat",
         prepareSendMessagesRequest: ({ messages }) => {
-          const { id, provider } = getStoredModel("CF_AI_MODEL");
-
           return {
             headers: {
               Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
             },
             body: {
               messages: messages.slice(-10),
-              model: id,
-              provider,
-              search: localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true",
+              model: selectedModel.id,
             },
           };
         },
@@ -190,33 +201,31 @@ const Page = () => {
 
       <div className="mt-auto pb-1 space-y-1 absolute bottom-0 left-0 right-0 bg-linear-to-t from-background to-transparent px-2">
         {showToBottom && (
-          <ViewTransition>
-            <Button
-              size="icon"
-              variant="outline"
-              className="rounded-full shadow-xl absolute left-1/2 -translate-x-1/2 -top-10 z-10"
-              onClick={() => {
-                chatListRef.current?.scrollTo({
-                  top: chatListRef.current.scrollHeight,
-                  behavior: "smooth",
-                });
-              }}
-            >
-              <ChevronDown />
-            </Button>
-          </ViewTransition>
+          <Button
+            size="icon"
+            variant="outline"
+            className="rounded-full shadow-xl absolute left-1/2 -translate-x-1/2 -top-10 z-10"
+            onClick={() => {
+              chatListRef.current?.scrollTo({
+                top: chatListRef.current.scrollHeight,
+                behavior: "smooth",
+              });
+            }}
+          >
+            <ChevronDown />
+          </Button>
         )}
 
-        <ViewTransition name="chat-input">
-          <ChatInput
-            models={models.filter((i) => i.type === "Text Generation")}
-            className="mx-auto max-w-3xl bg-background shadow-xl"
-            onSendMessage={onSendMessage}
-            status={status}
-            onStop={stop}
-            onRetry={regenerate}
-          />
-        </ViewTransition>
+        <ChatInput
+          models={models}
+          className="mx-auto max-w-3xl bg-background shadow-xl"
+          onSendMessage={onSendMessage}
+          status={status}
+          onStop={stop}
+          onRetry={regenerate}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+        />
         <Footer />
       </div>
 

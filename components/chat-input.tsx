@@ -2,15 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ChatStatus, FileUIPart } from "ai";
-import {
-  ArrowUp,
-  Earth,
-  Loader2,
-  Paperclip,
-  RefreshCw,
-  Square,
-  X,
-} from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, RefreshCw, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -20,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import type { Model } from "@/lib/models";
-import { cn, type StoredModelKey } from "@/lib/utils";
-import { Toggle } from "@/components/ui/toggle";
+import { cn } from "@/lib/utils";
 
 export interface onSendMessageProps {
   text: string;
@@ -50,7 +41,8 @@ const ChatInput = ({
   onRetry,
   status = "ready",
   models,
-  modalKey,
+  selectedModel,
+  setSelectedModel,
 }: {
   className?: string;
   onSendMessage: (data: onSendMessageProps) => void;
@@ -58,7 +50,8 @@ const ChatInput = ({
   onRetry?: () => void;
   status?: ChatStatus;
   models: Model[];
-  modalKey?: StoredModelKey;
+  selectedModel?: Model;
+  setSelectedModel?: (model: Model) => void;
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -67,13 +60,7 @@ const ChatInput = ({
     },
   });
   const input = form.watch("input");
-  const [selectedModel, setSelectedModel] = useState<Model>();
   const [files, setFiles] = useState<FileUIPart[]>([]);
-  const [searchEnabled, setSearchEnabled] = useState(false);
-
-  useEffect(() => {
-    setSearchEnabled(localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true");
-  }, []);
 
   useEffect(() => {
     if (!selectedModel?.input?.includes("image")) {
@@ -218,7 +205,7 @@ const ChatInput = ({
                     >
                       <X className="size-4 text-white" />
                     </button>
-                    {/** biome-ignore lint/performance/noImgElement: <data_url> */}
+                    {/* biome-ignore lint/performance/noImgElement: <data_url> */}
                     <img
                       src={file.url}
                       alt={file.filename}
@@ -233,29 +220,12 @@ const ChatInput = ({
           </ul>
 
           <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
-            <ModelSelect
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              models={models}
-              modalKey={modalKey ?? "CF_AI_MODEL"}
-            />
-
-            {selectedModel?.input?.includes("search") && (
-              <Toggle
-                aria-label="Toggle web search"
-                className="data-[state=on]:border"
-                pressed={searchEnabled}
-                onPressedChange={(pressed) => {
-                  localStorage.setItem(
-                    "CF_AI_SEARCH_ENABLED",
-                    pressed ? "true" : "false",
-                  );
-                  setSearchEnabled(pressed);
-                }}
-              >
-                <Earth />
-                Search
-              </Toggle>
+            {setSelectedModel && selectedModel && (
+              <ModelSelect
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                models={models}
+              />
             )}
 
             {selectedModel?.input?.includes("image") && (

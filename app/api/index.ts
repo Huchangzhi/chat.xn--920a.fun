@@ -1,18 +1,21 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createAiGateway } from "ai-gateway-provider";
-import { createWorkersAI } from "workers-ai-provider";
+// OpenAI API 配置
+export const openaiConfig = {
+  apiKey: process.env.OPENAI_API_KEY || "",
+  baseURL: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+};
 
-export const aigateway = createAiGateway({
-  accountId: process.env.CF_ACCOUNT_ID || "",
-  gateway: process.env.CF_AI_GATEWAY_NAME || "",
-  apiKey: process.env.CF_AI_GATEWAY_TOKEN || "",
-});
+// 获取完整的 API URL
+export function getOpenAIUrl(path: string): string {
+  const baseURL = openaiConfig.baseURL.endsWith("/v1")
+    ? openaiConfig.baseURL
+    : `${openaiConfig.baseURL}/v1`;
+  return `${baseURL}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
-export const workersai = createWorkersAI({
-  accountId: process.env.CF_ACCOUNT_ID || "",
-  apiKey: process.env.CF_WORKERS_AI_TOKEN || "",
-});
-
-export const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY,
-});
+// 获取授权头
+export function getAuthHeaders(): Record<string, string> {
+  return {
+    Authorization: `Bearer ${openaiConfig.apiKey}`,
+    "Content-Type": "application/json",
+  };
+}
