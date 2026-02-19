@@ -1,67 +1,66 @@
-# Cloudflare AI Web
+# OpenAI Chat Web
 
-中文 ｜ [English](./README.en.md)
-
-![readme.png](https://github.com/user-attachments/assets/e1c4e604-568d-4778-8780-29473619744f)
+基于 OpenAI API 的 AI 聊天平台
 
 ## 部署
 
 ### Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web&demo-title=Cloudflare%20AI%20Web&demo-url=https%3A%2F%2Fai.jaze.top)
-
-示例：https://ai.jaze.top
-
-> 额度用完时可能无法响应，建议自行部署
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web)
 
 ### Docker
 
 ```bash
-docker run -d --name cloudflare-ai-web \
-  -e CF_ACCOUNT_ID=YOUR_CF_ACCOUNT_ID \
-  -e CF_WORKERS_AI_TOKEN=YOUR_CF_WORKERS_AI_TOKEN \
+docker run -d --name openai-chat-web \
+  -e OPENAI_API_KEY=YOUR_OPENAI_API_KEY \
+  -e OPENAI_BASE_URL=https://api.openai.com/v1 \
+  -e APP_PASSWORD=YOUR_PASSWORD \
   -p 3000:3000 \
   --restart=always \
-  jazee6/cloudflare-ai-web
+  openai-chat-web
 ```
 
 ## 特性
 
-- 使用 Cloudflare Workers AI 快速搭建多模型AI平台
-- 支持 Cloudflare AI Gateway 接入Gemini等模型
-- 支持 Serverless 快速部署
+- 支持 OpenAI 所有聊天模型
+- 自动从 OpenAI API 获取模型列表
+- 支持图像输入（多模态模型）
 - 聊天记录本地存储
 - 支持设置访问密码
 
-## 部署说明
+## 环境变量列表
 
-### 环境变量列表
+| 名称              | 描述                     | 必填 |
+|------------------|-------------------------|-----|
+| OPENAI_API_KEY   | OpenAI API 密钥          | 是   |
+| OPENAI_BASE_URL  | OpenAI API 基础 URL      | 否   |
+| APP_PASSWORD     | 访问密码                 | 否   |
 
-| 名称                                  | 描述                      | 必填 |
-|-------------------------------------|-------------------------|----|
-| CF_ACCOUNT_ID                       | Cloudflare 账户ID         |    |
-| CF_WORKERS_AI_TOKEN                 | Cloudflare Workers AI令牌 |    |
-| APP_PASSWORD                        | 访问密码                    |    |
-| CF_AI_GATEWAY_NAME                  | Cloudflare AI网关名称       |    |
-| CF_AI_GATEWAY_TOKEN                 | Cloudflare AI网关授权令牌     |    |
-| NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS | Cloudflare AI网关提供者      |    |
-| GOOGLE_API_KEY                      | Google AI Studio 令牌     |    |
-| OPENAI_API_KEY                      | OpenAI API密钥            |    |
-| OPENAI_BASE_URL                     | OpenAI API基础URL         |    |
+### OPENAI_BASE_URL
 
-#### CF_WORKERS_AI_TOKEN
+可选，默认为 `https://api.openai.com/v1`
 
-- 管理账户 - 账户API令牌 - 创建令牌 - 使用Workers AI模板创建
+如果你使用第三方 API 代理，可以设置此项，例如：
+- `https://api.openai-proxy.com/v1`
+- `https://your-proxy.com/v1`
 
-#### NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS
+## 本地开发
 
-支持的提供者：
+```bash
+# 安装依赖
+bun install
 
-- google
-- openai
+# 创建环境变量文件
+cp .env.example .env.local
 
-多个提供者使用逗号分隔
+# 编辑 .env.local 并设置 OPENAI_API_KEY
 
-## 赞助
+# 启动开发服务器
+bun dev
+```
 
-[Click Me](https://jaze.top/sponsor)
+## 构建
+
+```bash
+bun build
+```

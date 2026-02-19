@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
-  title: "Cloudflare AI Web",
-  description: "Cloudflare AI Platform with one-click deployment.",
+  title: "OpenAI Chat Web",
+  description: "AI Chat Platform powered by OpenAI",
 };
 
 export default async function RootLayout({

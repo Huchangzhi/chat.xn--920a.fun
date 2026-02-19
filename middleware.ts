@@ -1,13 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   if (!process.env.APP_PASSWORD) {
     return NextResponse.next();
   }
   const password = request.headers.get("Authorization");
   if (password !== process.env.APP_PASSWORD) {
-    return new Response("Unauthorized", { status: 401 });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
+  return NextResponse.next();
 }
 
 export const config = {
