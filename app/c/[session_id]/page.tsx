@@ -151,7 +151,10 @@ const Page = () => {
             try {
               const data = JSON.parse(line.slice(6));
               if (data.content) {
-                assistantMessage.parts[0].text += data.content;
+                const firstPart = assistantMessage.parts[0];
+                if (firstPart.type === "text") {
+                  firstPart.text += data.content;
+                }
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantMessage.id ? assistantMessage : m,
