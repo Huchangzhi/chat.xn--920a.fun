@@ -39,7 +39,7 @@ export const db = new Dexie("CF_AI_DB") as Dexie & {
   message: EntityTable<Message, "id">;
 };
 
-db.version(1).stores({
+db.version(2).stores({
   session: "&id, name, updatedAt",
   message: "&id, sessionId, role, createdAt",
 });

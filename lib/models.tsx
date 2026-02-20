@@ -55,23 +55,25 @@ export async function fetchOpenAIModels(): Promise<Model[]> {
     }
 
     const data = await response.json();
-    
-    // 过滤出聊天模型
+
+    // 过滤出聊天模型（排除 embedding 等）
     const textModels = data.data
-      .filter((model: { id: string }) => {
+      .filter((model: { id: string; object?: string }) => {
         const id = model.id.toLowerCase();
-        return (
-          id.includes("gpt") ||
-          id.includes("o1") ||
-          id.includes("o3") ||
-          id.includes("chat")
-        );
+        // 排除 embedding 模型
+        if (id.includes("embedding")) return false;
+        // 保留聊天相关的模型
+        return true;
       })
       .map((model: { id: string }) => ({
         id: model.id,
         name: model.id,
         type: "Text Generation" as const,
-        input: ["image"] as Array<"image">,
+        input: model.id.toLowerCase().includes("vl") || 
+               model.id.toLowerCase().includes("vision") ||
+               model.id.toLowerCase().includes("4v") 
+          ? ["image"] as Array<"image"> 
+          : undefined,
         provider: "openai" as const,
       }));
 
