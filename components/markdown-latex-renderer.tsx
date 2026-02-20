@@ -1,7 +1,9 @@
 "use client";
 
 import { Streamdown } from "streamdown";
+import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
 
 interface MarkdownLatexRendererProps {
@@ -13,6 +15,7 @@ const MarkdownLatexRenderer = ({ content, mode = "streaming" }: MarkdownLatexRen
   return (
     <Streamdown 
       mode={mode}
+      remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex]}
     >
       {content}
