@@ -47,19 +47,35 @@ const Page = () => {
   );
 
   const [selectedModel, setSelectedModel] = useState<Model>(defaultModels[0]);
+  const selectedModelRef = useRef<Model>(selectedModel);
+
+  // 保持 ref 与 state 同步
+  useEffect(() => {
+    selectedModelRef.current = selectedModel;
+  }, [selectedModel]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<ChatStatus>("ready");
 
+  // 初始化时从 localStorage 读取模型选择，并等待模型列表加载
   useEffect(() => {
+    const storedModelId = localStorage.getItem("CF_AI_MODEL");
+    
     fetch("/api/models")
       .then((res) => res.json())
       .then((data) => {
         if (data.length > 0) {
           setModels(data);
-          const storedModelId = localStorage.getItem("CF_AI_MODEL");
-          const storedModel = data.find((m: Model) => m.id === storedModelId);
-          setSelectedModel(storedModel || data[0]);
+          // 优先使用 localStorage 中保存的模型
+          if (storedModelId) {
+            const storedModel = data.find((m: Model) => m.id === storedModelId);
+            if (storedModel) {
+              setSelectedModel(storedModel);
+              return;
+            }
+          }
+          // 如果 localStorage 中没有或找不到，使用列表中的第一个
+          setSelectedModel(data[0]);
         }
       })
       .catch(console.error);
@@ -75,6 +91,9 @@ const Page = () => {
   const sendMessage = async (data: onSendMessageProps) => {
     const { text, files } = data;
     setStatus("submitted");
+
+    // 直接从 localStorage 读取最新的模型选择，避免闭包问题
+    const modelId = localStorage.getItem("CF_AI_MODEL") || selectedModelRef.current.id;
 
     const messageParts = [
       ...(files ?? []),
@@ -107,7 +126,7 @@ const Page = () => {
             role: m.role,
             parts: m.parts,
           })),
-          model: selectedModel.id,
+          model: modelId,
         }),
       });
 
@@ -195,15 +214,16 @@ const Page = () => {
     if (lastUserMessage) {
       const textPart = lastUserMessage.parts.find((p) => p.type === "text");
       if (textPart) {
-        // Remove last assistant message
-        const lastAssistantMessage = messages
-          .slice()
-          .reverse()
-          .find((m) => m.role === "assistant");
-        if (lastAssistantMessage) {
-          await db.message.delete(lastAssistantMessage.id);
-          setMessages((prev) => prev.filter((m) => m.id !== lastAssistantMessage.id));
+        // Remove assistant messages after the last user message
+        const lastUserMessageIndex = messages.findIndex((m) => m.id === lastUserMessage.id);
+        const messagesAfterUser = messages.slice(lastUserMessageIndex + 1);
+        const assistantMessagesToDelete = messagesAfterUser.filter((m) => m.role === "assistant");
+        
+        for (const msg of assistantMessagesToDelete) {
+          await db.message.delete(msg.id);
         }
+        setMessages((prev) => prev.filter((m) => !assistantMessagesToDelete.some((am) => am.id === m.id)));
+        
         await sendMessage({ text: textPart.text || "" });
       }
     }

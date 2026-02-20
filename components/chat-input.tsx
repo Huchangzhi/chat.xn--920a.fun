@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowUp, Loader2, Paperclip, RefreshCw, Square, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -52,8 +52,8 @@ const ChatInput = ({
   onRetry?: () => void;
   status?: ChatStatus;
   models: Model[];
-  selectedModel?: Model;
-  setSelectedModel?: (model: Model) => void;
+  selectedModel: Model;
+  setSelectedModel: (model: Model) => void;
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,11 +64,13 @@ const ChatInput = ({
   const input = form.watch("input");
   const [files, setFiles] = useState<FilePart[]>([]);
 
-  if (selectedModel && !selectedModel.input?.includes("image")) {
-    if (files.length > 0) {
-      setFiles([]);
+  useEffect(() => {
+    if (selectedModel && !selectedModel.input?.includes("image")) {
+      if (files.length > 0) {
+        setFiles([]);
+      }
     }
-  }
+  }, [selectedModel, files.length]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     form.resetField("input");
@@ -222,13 +224,11 @@ const ChatInput = ({
           </ul>
 
           <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
-            {setSelectedModel && selectedModel && (
-              <ModelSelect
-                selectedModel={selectedModel}
-                setSelectedModel={setSelectedModel}
-                models={models}
-              />
-            )}
+            <ModelSelect
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+              models={models}
+            />
 
             {selectedModel?.input?.includes("image") && (
               <Button

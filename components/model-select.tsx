@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,11 +78,11 @@ function ComboBoxResponsive({
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  useEffect(() => {
-    if (selectedModel) {
-      localStorage.setItem("CF_AI_MODEL", selectedModel.id);
-    }
-  }, [selectedModel]);
+  const handleModelChange = useCallback((model: Model) => {
+    setSelectedModel(model);
+    localStorage.setItem("CF_AI_MODEL", model.id);
+    localStorage.setItem("CF_AI_MODEL_SELECTED", "true"); // 标记用户已手动选择
+  }, [setSelectedModel]);
 
   if (isDesktop) {
     return (
@@ -98,7 +98,7 @@ function ComboBoxResponsive({
         <PopoverContent className="p-0" align="start">
           <ModelList
             setOpen={setOpen}
-            setSelectedModel={setSelectedModel}
+            setSelectedModel={handleModelChange}
             models={models}
           />
         </PopoverContent>
@@ -121,7 +121,7 @@ function ComboBoxResponsive({
         <div className="mt-4 border-t">
           <ModelList
             setOpen={setOpen}
-            setSelectedModel={setSelectedModel}
+            setSelectedModel={handleModelChange}
             models={models}
           />
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
 import { db } from "@/lib/db";
@@ -15,6 +15,18 @@ export default function Home() {
   const router = useRouter();
   const [models, setModels] = useState<Model[]>(defaultModels);
   const [selectedModel, setSelectedModel] = useState<Model>(defaultModels[0]);
+  const hasInitialized = useRef(false);
+
+  // 初始化时从 localStorage 读取模型选择
+  useEffect(() => {
+    const storedModelId = localStorage.getItem("CF_AI_MODEL");
+    if (storedModelId) {
+      const storedModel = defaultModels.find((m) => m.id === storedModelId);
+      if (storedModel) {
+        setSelectedModel(storedModel);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/models")
@@ -22,9 +34,14 @@ export default function Home() {
       .then((data) => {
         if (data.length > 0) {
           setModels(data);
-          const storedModelId = localStorage.getItem("CF_AI_MODEL");
-          const storedModel = data.find((m: Model) => m.id === storedModelId);
-          setSelectedModel(storedModel || data[0]);
+          if (!hasInitialized.current) {
+            const storedModelId = localStorage.getItem("CF_AI_MODEL");
+            const storedModel = data.find((m: Model) => m.id === storedModelId);
+            if (storedModel) {
+              setSelectedModel(storedModel);
+            }
+            hasInitialized.current = true;
+          }
         }
       })
       .catch(console.error);
@@ -35,6 +52,11 @@ export default function Home() {
       const { text, files } = data;
 
       const sessionId = crypto.randomUUID();
+      
+      // 保存当前选择的模型到 localStorage
+      localStorage.setItem("CF_AI_MODEL", selectedModel.id);
+      localStorage.setItem("CF_AI_MODEL_SELECTED", "true");
+      
       await db.session.add({
         updatedAt: new Date(),
         name: text.slice(0, 20),
@@ -56,7 +78,7 @@ export default function Home() {
 
       router.replace(`/c/${sessionId}?new`);
     },
-    [router],
+    [router, selectedModel],
   );
 
   return (
