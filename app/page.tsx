@@ -14,6 +14,7 @@ function generateId(): string {
 export default function Home() {
   const router = useRouter();
   const [models, setModels] = useState<Model[]>(defaultModels);
+  const [selectedModel, setSelectedModel] = useState<Model>(defaultModels[0]);
 
   useEffect(() => {
     fetch("/api/models")
@@ -21,6 +22,9 @@ export default function Home() {
       .then((data) => {
         if (data.length > 0) {
           setModels(data);
+          const storedModelId = localStorage.getItem("CF_AI_MODEL");
+          const storedModel = data.find((m: Model) => m.id === storedModelId);
+          setSelectedModel(storedModel || data[0]);
         }
       })
       .catch(console.error);
@@ -65,6 +69,8 @@ export default function Home() {
           models={models}
           className="mx-auto max-w-3xl"
           onSendMessage={onSendMessage}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
         />
       </div>
 
