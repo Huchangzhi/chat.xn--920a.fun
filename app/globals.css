@@ -14,50 +14,8 @@
   line-height: 1.6;
 }
 
-.markdown-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
-}
-
-.markdown-content th,
-.markdown-content td {
-  border: 1px solid var(--border);
-  padding: 0.5em 1em;
-}
-
-.markdown-content th {
-  background-color: var(--secondary);
-  font-weight: 600;
-  text-align: left;
-}
-
-.markdown-content tr:nth-child(even) {
-  background-color: var(--muted);
-}
-
-.markdown-content pre {
-  background-color: #0d1117;
-  border-radius: 0.5em;
-  padding: 1em;
-  overflow-x: auto;
-  margin: 1em 0;
-}
-
-.markdown-content code {
-  font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
-  font-size: 0.9em;
-}
-
-.markdown-content :not(pre) > code {
-  background-color: var(--secondary);
-  padding: 0.1em 0.3em;
-  border-radius: 0.2em;
-}
-
 .markdown-content .katex {
   font-size: 1.05em;
-  font-family: KaTeX_Main, "Times New Roman", serif;
 }
 
 .markdown-content .katex-display {
@@ -65,10 +23,6 @@
   overflow-y: hidden;
   padding: 0.5em 0;
   margin: 0.5em 0;
-}
-
-.markdown-content .katex-display > .katex {
-  font-size: 1.1em;
 }
 
 @custom-variant dark (&:is(.dark *));
