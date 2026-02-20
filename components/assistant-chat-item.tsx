@@ -1,4 +1,3 @@
-import { Streamdown } from "streamdown";
 import type { MessagePart } from "@/lib/db";
 import {
   Accordion,
@@ -6,7 +5,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Brain, Loader2 } from "lucide-react";
+import { Brain } from "lucide-react";
+import MarkdownLatexRenderer from "@/components/markdown-latex-renderer";
 
 interface TextPart {
   type: "text";
@@ -31,14 +31,14 @@ const AssistantChatItem = ({
   // 解析思考标签
   const parseParts = (): DisplayPart[] => {
     const displayParts: DisplayPart[] = [];
-    
+
     for (const part of parts) {
       if (part.type === "text") {
         const text = part.text;
         const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
         let lastIndex = 0;
         let match;
-        
+
         while ((match = thinkRegex.exec(text)) !== null) {
           // 添加思考前的普通文本
           if (match.index > lastIndex) {
@@ -47,17 +47,17 @@ const AssistantChatItem = ({
               text: text.slice(lastIndex, match.index),
             });
           }
-          
+
           // 添加思考内容
           displayParts.push({
             type: "reasoning",
             text: match[1].trim(),
             state: "done",
           });
-          
+
           lastIndex = match.index + match[0].length;
         }
-        
+
         // 添加剩余的普通文本
         if (lastIndex < text.length) {
           displayParts.push({
@@ -67,7 +67,7 @@ const AssistantChatItem = ({
         }
       }
     }
-    
+
     return displayParts;
   };
 
@@ -77,7 +77,7 @@ const AssistantChatItem = ({
     <div className={className}>
       {displayParts.map((part, index) => {
         if (part.type === "text") {
-          return <Streamdown key={`text-${index}`}>{part.text}</Streamdown>;
+          return <MarkdownLatexRenderer key={`text-${index}`} content={part.text} />;
         }
 
         if (part.type === "reasoning") {
@@ -91,7 +91,7 @@ const AssistantChatItem = ({
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Streamdown>{part.text}</Streamdown>
+                  <MarkdownLatexRenderer mode="static" content={part.text} />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
