@@ -229,7 +229,10 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
                   <CommandItem
                     key={category}
                     value={`category:${category}`}
-                    onSelect={() => setSelectedCategory(category)}
+                    onSelect={() => {
+                      setSelectedCategory(category);
+                      setSelectedSubCategory(null); // 重置子分类选择
+                    }}
                   >
                     {category}
                   </CommandItem>
@@ -304,9 +307,12 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
                 <CommandItem
                   key={category}
                   value={`category:${category}`}
-                  onSelect={() => setSelectedCategory(category)}
+                  onSelect={() => {
+                    setSelectedCategory(category);
+                    setSelectedSubCategory(null); // 重置子分类选择
+                  }}
                 >
-                  {category}
+                    {category}
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -317,7 +323,12 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
                   value={model.id}
                   onSelect={(value) => {
                     const selected = models.find((m) => m.id === value);
-                    if (selected) handleNormalModelSelect(selected);
+                    if (selected) {
+                      // 在选择普通模型时清除旗舰模型状态
+                      setSelectedCategory(null);
+                      setSelectedSubCategory(null);
+                      handleNormalModelSelect(selected);
+                    }
                   }}
                 >
                   {model.name}
