@@ -10,11 +10,8 @@ import ModelSelect from "@/components/model-select";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import type { Model } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import type { FilePart } from "@/lib/db";
-
-import type { Model } from "@/lib/models";
 
 export interface onSendMessageProps {
   text: string;
