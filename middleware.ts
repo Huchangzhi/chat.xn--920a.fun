@@ -5,8 +5,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 排除模型列表 API，不需要密码验证
-  if (request.nextUrl.pathname === "/api/models") {
+  // 排除模型列表 API 和模型配置 API，不需要密码验证
+  if (request.nextUrl.pathname === "/api/models" || request.nextUrl.pathname === "/api/model-config") {
     return NextResponse.next();
   }
 

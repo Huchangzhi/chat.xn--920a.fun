@@ -14,9 +14,12 @@ import type { Model } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import type { FilePart } from "@/lib/db";
 
+import type { Model } from "@/lib/models";
+
 export interface onSendMessageProps {
   text: string;
   files?: FilePart[];
+  model?: Model;
 }
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error";
@@ -78,6 +81,7 @@ const ChatInput = ({
     onSendMessage({
       text: values.input,
       files,
+      model: selectedModel, // 传递完整的模型对象，可能包含fallbackList
     });
   }
 

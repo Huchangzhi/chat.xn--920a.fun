@@ -59,7 +59,7 @@ const Page = () => {
 
   // 初始化时从 localStorage 读取模型选择，并等待模型列表加载
   useEffect(() => {
-    const storedModelId = localStorage.getItem("CF_AI_MODEL");
+    const storedModelData = localStorage.getItem("CF_AI_MODEL");
     
     fetch("/api/models")
       .then((res) => res.json())
@@ -67,15 +67,70 @@ const Page = () => {
         if (data.length > 0) {
           setModels(data);
           // 优先使用 localStorage 中保存的模型
-          if (storedModelId) {
-            const storedModel = data.find((m: Model) => m.id === storedModelId);
-            if (storedModel) {
-              setSelectedModel(storedModel);
-              return;
+          if (storedModelData) {
+            try {
+              // 检查是否是模型列表
+              const parsedData = JSON.parse(storedModelData);
+              if (Array.isArray(parsedData)) {
+                // 如果是模型列表，检查是否是旗舰模型
+                const modelConfig = localStorage.getItem("CF_AI_MODEL_CONFIG");
+                if (modelConfig) {
+                  try {
+                    const config = JSON.parse(modelConfig);
+                    // 尝试找到匹配的旗舰模型配置
+                    for (const [category, subCategories] of Object.entries(config as Record<string, Record<string, string[]>>)) {
+                      for (const [subCategory, modelList] of Object.entries(subCategories)) {
+                        if (JSON.stringify(modelList) === JSON.stringify(parsedData)) {
+                          // 找到匹配的旗舰模型配置
+                          const fallbackModel = {
+                            id: modelList[0], // 使用第一个模型作为ID
+                            name: `${category} (${subCategory})`, // 显示为"旗舰模型 (模式)"
+                            type: "Text Generation",
+                            provider: "openai",
+                          } as Model;
+                          // 添加额外属性
+                          (fallbackModel as any).fallbackList = parsedData;
+                          (fallbackModel as any).selectedCategory = category;
+                          (fallbackModel as any).selectedSubCategory = subCategory;
+                          setSelectedModel(fallbackModel);
+                          return; // 找到后直接返回
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    console.error("Error parsing model config from localStorage:", e);
+                  }
+                }
+                
+                // 如果不是旗舰模型配置，按普通模型列表处理
+                const firstModelId = parsedData[0];
+                const fallbackModel = {
+                  id: firstModelId,
+                  name: `${firstModelId} (fallback)`,
+                  type: "Text Generation",
+                  provider: "openai",
+                } as Model;
+                // 添加fallbackList属性
+                (fallbackModel as any).fallbackList = parsedData;
+                setSelectedModel(fallbackModel);
+              } else {
+                // 如果是单个模型ID，使用默认逻辑
+                const storedModel = data.find((m: Model) => m.id === storedModelData);
+                if (storedModel) {
+                  setSelectedModel(storedModel);
+                }
+              }
+            } catch (e) {
+              // 如果解析失败，假设是单个模型ID
+              const storedModel = data.find((m: Model) => m.id === storedModelData);
+              if (storedModel) {
+                setSelectedModel(storedModel);
+              }
             }
+          } else {
+            // 如果 localStorage 中没有或找不到，使用列表中的第一个
+            setSelectedModel(data[0]);
           }
-          // 如果 localStorage 中没有或找不到，使用列表中的第一个
-          setSelectedModel(data[0]);
         }
       })
       .catch(console.error);
@@ -93,7 +148,21 @@ const Page = () => {
     setStatus("submitted");
 
     // 直接从 localStorage 读取最新的模型选择，避免闭包问题
-    const modelId = localStorage.getItem("CF_AI_MODEL") || selectedModelRef.current.id;
+    const storedModelData = localStorage.getItem("CF_AI_MODEL");
+    let modelToUse;
+    
+    try {
+      // 检查是否是模型列表
+      const parsedData = JSON.parse(storedModelData || "null");
+      if (Array.isArray(parsedData)) {
+        modelToUse = parsedData; // 使用整个模型列表
+      } else {
+        modelToUse = storedModelData || selectedModelRef.current.id; // 使用单个模型ID
+      }
+    } catch (e) {
+      // 如果解析失败，使用单个模型ID
+      modelToUse = storedModelData || selectedModelRef.current.id;
+    }
 
     const messageParts = [
       ...(files ?? []),
@@ -126,7 +195,7 @@ const Page = () => {
             role: m.role,
             parts: m.parts,
           })),
-          model: modelId,
+          model: modelToUse,
         }),
       });
 
@@ -169,7 +238,19 @@ const Page = () => {
           if (line.startsWith("data: ")) {
             try {
               const data = JSON.parse(line.slice(6));
-              if (data.content) {
+              if (data.error) {
+                // 如果API返回错误，显示错误信息
+                const firstPart = assistantMessage.parts[0];
+                if (firstPart.type === "text") {
+                  firstPart.text += `[错误: ${data.error}]`;
+                }
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessage.id ? assistantMessage : m,
+                  ),
+                );
+                break; // 遇到错误时停止处理
+              } else if (data.content) {
                 const firstPart = assistantMessage.parts[0];
                 if (firstPart.type === "text") {
                   firstPart.text += data.content;
