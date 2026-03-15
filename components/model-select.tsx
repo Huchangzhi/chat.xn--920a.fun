@@ -173,7 +173,7 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
   const handleModelSelect = useCallback((modelIds: string[], selectedCat: string, selectedSubCat: string) => {
     // 创建一个包含所有模型ID的数组，以便API可以按顺序尝试
     const newModel: Model = {
-      id: modelIds[0], // 使用第一个模型作为显示名称
+      id: modelIds[0] || '', // 使用第一个模型作为显示名称，确保不为undefined
       name: `${selectedCat} (${selectedSubCat})`, // 显示为"旗舰模型 (模式)"的格式
       type: "Text Generation",
       provider: "openai",
@@ -376,6 +376,7 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
                       // 更新模型以反映新的子分类选择
                       const newModel: Model = {
                         ...selectedModel,
+                        id: selectedModel.id || '', // 确保id不为undefined
                         name: `${category} (${newSubCategory})`, // 更新显示名称
                       };
                       (newModel as any).selectedSubCategory = newSubCategory; // 更新子分类
@@ -452,12 +453,12 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
                   const newSubCategory = e.target.value;
                   
                   if (config) {
-                    // 更新模型以反映新的子分类选择
-                    const newModel: Model = {
-                      ...selectedModel,
-                      name: `${category} (${newSubCategory})`, // 更新显示名称
-                    };
-                    (newModel as any).selectedSubCategory = newSubCategory; // 更新子分类
+                                      // 更新模型以反映新的子分类选择
+                                      const newModel: Model = {
+                                        ...selectedModel,
+                                        id: selectedModel.id || '', // 确保id不为undefined
+                                        name: `${category} (${newSubCategory})`, // 更新显示名称
+                                      };                    (newModel as any).selectedSubCategory = newSubCategory; // 更新子分类
                     
                     setSelectedModel(newModel);
                     
