@@ -18,6 +18,7 @@ export interface onSendMessageProps {
   text: string;
   files?: FilePart[];
   model?: Model;
+  searchEnabled?: boolean;
 }
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error";
@@ -64,6 +65,12 @@ const ChatInput = ({
   });
   const input = form.watch("input");
   const [files, setFiles] = useState<FilePart[]>([]);
+  const [searchEnabled, setSearchEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true";
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (selectedModel && !selectedModel.input?.includes("image")) {
@@ -73,13 +80,19 @@ const ChatInput = ({
     }
   }, [selectedModel, files.length]);
 
+  // 同步搜索开关状态到 localStorage
+  useEffect(() => {
+    localStorage.setItem("CF_AI_SEARCH_ENABLED", searchEnabled.toString());
+  }, [searchEnabled]);
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     form.resetField("input");
     setFiles([]);
     onSendMessage({
       text: values.input,
       files,
-      model: selectedModel, // 传递完整的模型对象，可能包含fallbackList
+      model: selectedModel,
+      searchEnabled,
     });
   }
 
@@ -232,6 +245,22 @@ const ChatInput = ({
               models={models}
             />
 
+            {/* 搜索开关 */}
+            <div className="flex items-center space-x-2 px-2">
+              <span className="text-sm">搜索</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={searchEnabled}
+                  onChange={() => setSearchEnabled(!searchEnabled)}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 rounded-full"></div>
+              </label>
+            </div>
+
+            
+
             {selectedModel?.input?.includes("image") && (
               <Button
                 size="icon"
@@ -250,8 +279,7 @@ const ChatInput = ({
                 status === "submitted" ||
                 (input.trim().length === 0 && status === "ready")
               }
-              type={status === "ready" ? "submit" : "button"}
-              onClick={onSendClick}
+              type="submit"
             >
               {status === "ready" && <ArrowUp />}
               {status === "submitted" && <Loader2 className="animate-spin" />}

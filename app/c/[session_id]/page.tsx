@@ -144,24 +144,28 @@ const Page = () => {
   }, [initMessages, loaded]);
 
   const sendMessage = async (data: onSendMessageProps) => {
-    const { text, files } = data;
+    const { text, files, model, searchEnabled } = data;
     setStatus("submitted");
 
-    // 直接从 localStorage 读取最新的模型选择，避免闭包问题
-    const storedModelData = localStorage.getItem("CF_AI_MODEL");
+    // 获取当前模型配置
+    const currentModel = model || selectedModelRef.current;
     let modelToUse;
-    
-    try {
-      // 检查是否是模型列表
-      const parsedData = JSON.parse(storedModelData || "null");
-      if (Array.isArray(parsedData)) {
-        modelToUse = parsedData; // 使用整个模型列表
-      } else {
-        modelToUse = storedModelData || selectedModelRef.current.id; // 使用单个模型ID
+
+    // 从传入的 model 或从 localStorage 获取模型信息
+    if (model && (model as any).fallbackList) {
+      modelToUse = (model as any).fallbackList;
+    } else {
+      const storedModelData = localStorage.getItem("CF_AI_MODEL");
+      try {
+        const parsedData = JSON.parse(storedModelData || "null");
+        if (Array.isArray(parsedData)) {
+          modelToUse = parsedData;
+        } else {
+          modelToUse = storedModelData || currentModel.id;
+        }
+      } catch (e) {
+        modelToUse = storedModelData || currentModel.id;
       }
-    } catch (e) {
-      // 如果解析失败，使用单个模型ID
-      modelToUse = storedModelData || selectedModelRef.current.id;
     }
 
     const messageParts = [
@@ -196,6 +200,7 @@ const Page = () => {
             parts: m.parts,
           })),
           model: modelToUse,
+          searchEnabled,
         }),
       });
 
@@ -238,18 +243,42 @@ const Page = () => {
           if (line.startsWith("data: ")) {
             try {
               const data = JSON.parse(line.slice(6));
+              
               if (data.error) {
-                // 如果API返回错误，显示错误信息
                 const firstPart = assistantMessage.parts[0];
                 if (firstPart.type === "text") {
-                  firstPart.text += `[错误: ${data.error}]`;
+                  firstPart.text += `[错误：${data.error}]`;
                 }
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantMessage.id ? assistantMessage : m,
                   ),
                 );
-                break; // 遇到错误时停止处理
+                break;
+              } else if (data.searchStatus === "searching") {
+                // 显示搜索中状态
+                const firstPart = assistantMessage.parts[0];
+                if (firstPart.type === "text") {
+                  firstPart.text += `🔍 正在搜索：${data.searchQuery}...\n\n`;
+                }
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessage.id ? assistantMessage : m,
+                  ),
+                );
+              } else if (data.searchStatus === "complete") {
+                // 搜索完成，继续等待 AI 响应
+              } else if (data.searchStatus === "error") {
+                // 搜索错误，显示提示
+                const firstPart = assistantMessage.parts[0];
+                if (firstPart.type === "text") {
+                  firstPart.text += `⚠️ 搜索失败：${data.error}\n\n`;
+                }
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessage.id ? assistantMessage : m,
+                  ),
+                );
               } else if (data.content) {
                 const firstPart = assistantMessage.parts[0];
                 if (firstPart.type === "text") {
@@ -295,17 +324,19 @@ const Page = () => {
     if (lastUserMessage) {
       const textPart = lastUserMessage.parts.find((p) => p.type === "text");
       if (textPart) {
-        // Remove assistant messages after the last user message
         const lastUserMessageIndex = messages.findIndex((m) => m.id === lastUserMessage.id);
         const messagesAfterUser = messages.slice(lastUserMessageIndex + 1);
         const assistantMessagesToDelete = messagesAfterUser.filter((m) => m.role === "assistant");
-        
+
         for (const msg of assistantMessagesToDelete) {
           await db.message.delete(msg.id);
         }
         setMessages((prev) => prev.filter((m) => !assistantMessagesToDelete.some((am) => am.id === m.id)));
-        
-        await sendMessage({ text: textPart.text || "" });
+
+        await sendMessage({ 
+          text: textPart.text || "",
+          searchEnabled: localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true",
+        });
       }
     }
   };
@@ -318,6 +349,7 @@ const Page = () => {
         sendMessage({
           text,
           files,
+          searchEnabled: localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true",
         });
         history.replaceState(null, "", location.pathname);
       }
@@ -366,7 +398,7 @@ const Page = () => {
   }, []);
 
   const onSendMessage = async (data: onSendMessageProps) => {
-    const { text, files } = data;
+    const { text, files, model, searchEnabled } = data;
 
     await db.message.add({
       id: generateId(),
@@ -390,6 +422,8 @@ const Page = () => {
     await sendMessage({
       text,
       files,
+      model,
+      searchEnabled,
     });
   };
 

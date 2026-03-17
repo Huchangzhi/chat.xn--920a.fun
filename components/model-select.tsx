@@ -33,6 +33,13 @@ interface ModelConfig {
   };
 }
 
+// 添加搜索模式选项
+const SEARCH_MODEL_CATEGORIES = {
+  "Search": {
+    "search": ["gpt-4o", "gpt-4-turbo", "claude-3-opus", "gemini-pro"] // 示例模型列表
+  }
+};
+
 interface ModelSelectProps {
   selectedModel?: Model;
   setSelectedModel: (model: Model) => void;
