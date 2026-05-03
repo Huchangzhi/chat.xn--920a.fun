@@ -86,11 +86,11 @@ async function processStream(
 ): Promise<boolean> {
   const reader = response.body!.getReader();
   let hasContent = false;
+  let streamError: Error | null = null;
 
   const parser = createParser({
     onEvent: (event) => {
       if (event.data === "[DONE]") {
-        controller.close();
         return;
       }
 
@@ -98,7 +98,7 @@ async function processStream(
         const data = JSON.parse(event.data);
 
         if (data.error) {
-          controller.error(new Error(data.error.message || "API Error"));
+          streamError = new Error(data.error.message || "API Error");
           return;
         }
 
@@ -115,13 +115,12 @@ async function processStream(
           }
         }
       } catch (e) {
-        console.error("Error processing event:", e);
-        controller.error(e);
+        streamError = e as Error;
       }
     },
     onError: (error) => {
       console.error("Parser error:", error);
-      controller.error(error);
+      streamError = error;
     },
   });
 
@@ -131,10 +130,13 @@ async function processStream(
       if (done) break;
       const str = decoder.decode(value, { stream: true });
       parser.feed(str);
+      if (streamError) {
+        throw streamError;
+      }
     }
   } catch (e) {
     console.error("Error reading stream:", e);
-    controller.error(e);
+    throw e;
   } finally {
     reader.releaseLock();
   }
@@ -343,9 +345,14 @@ export async function POST(request: NextRequest) {
                       }
                     }
 
-                    if (success) return;
+                    if (success) {
+                      controller.close();
+                      return;
+                    }
                     if (modelItem === modelList[0] && !success) continue;
                   }
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "所有模型均返回空回复" })}\n\n`));
+                  controller.close();
                 } catch (searchError) {
                   controller.enqueue(
                     encoder.encode(`data: ${JSON.stringify({ searchStatus: "error", error: (searchError as Error).message })}\n\n`)
@@ -385,9 +392,14 @@ export async function POST(request: NextRequest) {
                       }
                     }
 
-                    if (success) return;
+                    if (success) {
+                      controller.close();
+                      return;
+                    }
                     if (modelItem === modelList[0] && !success) continue;
                   }
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "所有模型均返回空回复" })}\n\n`));
+                  controller.close();
                 }
               },
               cancel() {
@@ -422,9 +434,9 @@ export async function POST(request: NextRequest) {
               if (hasContent) {
                 success = true;
               } else {
-if (modelItem === modelList[0]) {
-  retryCount = 3;
-} else {
+                if (modelItem === modelList[0]) {
+                  retryCount = 3;
+                } else {
                   retryCount++;
                   if (retryCount < 3) {
                     controller.enqueue(
@@ -444,9 +456,14 @@ if (modelItem === modelList[0]) {
             }
           }
 
-          if (success) return;
+          if (success) {
+            controller.close();
+            return;
+          }
           if (modelItem === modelList[0] && !success) continue;
         }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "所有模型均返回空回复" })}\n\n`));
+        controller.close();
       },
       cancel() {
         console.log("Stream cancelled");
