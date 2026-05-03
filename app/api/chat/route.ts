@@ -15,7 +15,6 @@ interface Message {
   content: string;
 }
 
-// 验证并清理消息，确保只有有效的角色
 function validateAndCleanMessages(messages: Data["messages"]) {
   return messages.map((message) => {
     let role: "system" | "user" | "assistant" = "user";
@@ -49,9 +48,8 @@ async function callModel(
   model: string,
   apiKey: string,
   baseURL: string,
-  messages: any[],
-  controller: ReadableStreamDefaultController
-) {
+  messages: any[]
+): Promise<Response> {
   const apiUrl = `${baseURL.endsWith("/v1") ? baseURL : `${baseURL}/v1`}/chat/completions`;
 
   const response = await fetch(apiUrl, {
@@ -85,8 +83,10 @@ async function processStream(
   controller: ReadableStreamDefaultController,
   encoder: TextEncoder,
   decoder: TextDecoder
-) {
+): Promise<boolean> {
   const reader = response.body!.getReader();
+  let hasContent = false;
+
   const parser = createParser({
     onEvent: (event) => {
       if (event.data === "[DONE]") {
@@ -111,6 +111,7 @@ async function processStream(
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ content })}\n\n`)
             );
+            hasContent = true;
           }
         }
       } catch (e) {
@@ -137,9 +138,9 @@ async function processStream(
   } finally {
     reader.releaseLock();
   }
+  return hasContent;
 }
 
-// 调用模型并返回完整响应（用于搜索判断）
 async function callModelForResponse(
   model: string,
   apiKey: string,
@@ -171,7 +172,6 @@ async function callModelForResponse(
   return data.choices?.[0]?.message?.content || "";
 }
 
-// 调用 Tavily 搜索 API
 async function callTavilySearch(query: string): Promise<any> {
   const tavilyApiKey = process.env.TAVILY_API_KEY;
 
@@ -206,7 +206,6 @@ async function callTavilySearch(query: string): Promise<any> {
   return await response.json();
 }
 
-// 从 AI 响应中提取 JSON
 function extractJsonFromResponse(response: string): any | null {
   let searchStartIndex = response.lastIndexOf("{");
   while (searchStartIndex !== -1) {
@@ -229,13 +228,14 @@ function extractJsonFromResponse(response: string): any | null {
         return JSON.parse(jsonString);
       }
     } catch (e) {
-      // 解析失败，继续向前查找
     }
 
     searchStartIndex = response.lastIndexOf("{", searchStartIndex - 1);
   }
   return null;
 }
+
+
 
 export async function POST(request: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -256,12 +256,10 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
-    // 处理搜索逻辑
     if (searchEnabled && cleanedMessages.length > 0) {
       const lastUserMessage = cleanedMessages[cleanedMessages.length - 1];
 
       if (lastUserMessage.role === "user") {
-        // 第一步：询问 AI 是否需要搜索
         const searchDecisionMessages: Message[] = [
           {
             role: "system",
@@ -274,7 +272,6 @@ export async function POST(request: NextRequest) {
         ];
 
         try {
-          // 获取第一个模型用于搜索判断
           const decisionModel = modelList[0];
           const decisionResponse = await callModelForResponse(
             decisionModel,
@@ -288,71 +285,108 @@ export async function POST(request: NextRequest) {
           if (jsonResponse && jsonResponse.search && jsonResponse.search !== "no") {
             const searchQuery = jsonResponse.search;
 
-            // 发送搜索中状态给前端
             const readableStream = new ReadableStream({
               async start(controller) {
-                // 发送搜索状态
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ searchStatus: "searching", searchQuery })}\n\n`)
                 );
 
                 try {
-                  // 调用 Tavily 搜索
                   const searchData = await callTavilySearch(searchQuery);
 
-                  // 发送搜索完成状态
                   controller.enqueue(
                     encoder.encode(`data: ${JSON.stringify({ searchStatus: "complete", searchResults: searchData })}\n\n`)
                   );
 
-                  // 构建包含搜索结果的新消息 - 使用所有搜索结果
                   const searchResults = searchData.results || [];
                   const searchContextParts = searchResults.map((result: any, index: number) => 
                     `[来源 ${index + 1}: ${result.title}](${result.url})\n${result.content}`
                   );
                   const searchContext = `请根据以下搜索结果回答问题，注意要使用用户的语言，不管材料的语言。每个来源都包含相关信息，请综合所有信息给出完整、详细的回答：\n\n${searchContextParts.join("\n\n")}\n\n原始问题：${lastUserMessage.content}`;
 
-                  // 替换最后一条用户消息
                   const modifiedMessages = [
                     ...cleanedMessages.slice(0, -1),
                     { role: "user" as const, content: searchContext }
                   ];
 
-                  // 调用模型生成回答
                   for (const modelItem of modelList) {
-                    try {
-                      const response = await callModel(modelItem, apiKey, baseURL, modifiedMessages, controller);
-                      await processStream(response, controller, encoder, decoder);
-                      return;
-                    } catch (error) {
-                      if (modelItem === modelList[modelList.length - 1]) {
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `所有模型调用失败：${(error as Error).message}` })}\n\n`));
-                        controller.close();
-                        return;
+                    let retryCount = 0;
+                    let success = false;
+
+                    while (retryCount < 3 && !success) {
+                      try {
+                        const response = await callModel(modelItem, apiKey, baseURL, modifiedMessages);
+                        const hasContent = await processStream(response, controller, encoder, decoder);
+
+                        if (hasContent) {
+                          success = true;
+                        } else {
+                          if (modelItem === modelList[0]) {
+                            retryCount = 3;
+                          } else {
+                            retryCount++;
+                            if (retryCount < 3) {
+                              controller.enqueue(
+                                encoder.encode(`data: ${JSON.stringify({ retry: `重试 ${retryCount}/3` })}\n\n`)
+                              );
+                            }
+                          }
+                        }
+                      } catch (error) {
+                        if (modelItem === modelList[modelList.length - 1] && retryCount >= 2) {
+                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `所有模型调用失败：${(error as Error).message}` })}\n\n`));
+                          controller.close();
+                          return;
+                        }
+                        retryCount++;
+                        if (retryCount >= 3) throw error;
                       }
-                      continue;
                     }
+
+                    if (success) return;
+                    if (modelItem === modelList[0] && !success) continue;
                   }
                 } catch (searchError) {
-                  // 搜索失败，使用原始消息
                   controller.enqueue(
                     encoder.encode(`data: ${JSON.stringify({ searchStatus: "error", error: (searchError as Error).message })}\n\n`)
                   );
 
-                  // 使用原始消息继续
                   for (const modelItem of modelList) {
-                    try {
-                      const response = await callModel(modelItem, apiKey, baseURL, cleanedMessages, controller);
-                      await processStream(response, controller, encoder, decoder);
-                      return;
-                    } catch (error) {
-                      if (modelItem === modelList[modelList.length - 1]) {
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `所有模型调用失败：${(error as Error).message}` })}\n\n`));
-                        controller.close();
-                        return;
+                    let retryCount = 0;
+                    let success = false;
+
+                    while (retryCount < 3 && !success) {
+                      try {
+                        const response = await callModel(modelItem, apiKey, baseURL, cleanedMessages);
+                        const hasContent = await processStream(response, controller, encoder, decoder);
+
+                        if (hasContent) {
+                          success = true;
+                        } else {
+                          if (modelItem === modelList[0]) {
+                            retryCount = 3;
+                          } else {
+                            retryCount++;
+                            if (retryCount < 3) {
+                              controller.enqueue(
+                                encoder.encode(`data: ${JSON.stringify({ retry: `重试 ${retryCount}/3` })}\n\n`)
+                              );
+                            }
+                          }
+                        }
+                      } catch (error) {
+                        if (modelItem === modelList[modelList.length - 1] && retryCount >= 2) {
+                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `所有模型调用失败：${(error as Error).message}` })}\n\n`));
+                          controller.close();
+                          return;
+                        }
+                        retryCount++;
+                        if (retryCount >= 3) throw error;
                       }
-                      continue;
                     }
+
+                    if (success) return;
+                    if (modelItem === modelList[0] && !success) continue;
                   }
                 }
               },
@@ -368,30 +402,50 @@ export async function POST(request: NextRequest) {
               },
             });
           }
-          // 如果不需要搜索，继续普通聊天流程
         } catch (error) {
           console.error("Search decision error:", error);
-          // 搜索判断失败，继续普通聊天流程
         }
       }
     }
 
-    // 普通聊天流程
     const readableStream = new ReadableStream({
       async start(controller) {
         for (const modelItem of modelList) {
-          try {
-            const response = await callModel(modelItem, apiKey, baseURL, cleanedMessages, controller);
-            await processStream(response, controller, encoder, decoder);
-            return;
-          } catch (error) {
-            if (modelItem === modelList[modelList.length - 1]) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `所有模型调用失败：${(error as Error).message}` })}\n\n`));
-              controller.close();
-              return;
+          let retryCount = 0;
+          let success = false;
+
+          while (retryCount < 3 && !success) {
+            try {
+              const response = await callModel(modelItem, apiKey, baseURL, cleanedMessages);
+              const hasContent = await processStream(response, controller, encoder, decoder);
+
+              if (hasContent) {
+                success = true;
+              } else {
+if (modelItem === modelList[0]) {
+  retryCount = 3;
+} else {
+                  retryCount++;
+                  if (retryCount < 3) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ retry: `重试 ${retryCount}/3` })}\n\n`)
+                    );
+                  }
+                }
+              }
+            } catch (error) {
+              if (modelItem === modelList[modelList.length - 1] && retryCount >= 2) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `所有模型调用失败：${(error as Error).message}` })}\n\n`));
+                controller.close();
+                return;
+              }
+              retryCount++;
+              if (retryCount >= 3) throw error;
             }
-            continue;
           }
+
+          if (success) return;
+          if (modelItem === modelList[0] && !success) continue;
         }
       },
       cancel() {
