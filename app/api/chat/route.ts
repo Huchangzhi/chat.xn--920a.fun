@@ -265,12 +265,9 @@ export async function POST(request: NextRequest) {
         const searchDecisionMessages: Message[] = [
           {
             role: "system",
-            content: "根据用户问题判断是否需要搜索。如果需要搜索，请输出格式：{\"search\":\"搜索查询内容\"}；如果不需要搜索，请输出：{\"search\":\"no\"}。只输出 JSON 格式，不要其他内容。搜索词请尽量拆分为关键词，例如：\"重庆 旅游推荐\"。"
+            content: "根据完整的对话记录判断是否需要搜索。如果需要搜索，请输出格式：{\"search\":\"搜索查询内容\"}；如果不需要搜索，请输出：{\"search\":\"no\"}。只输出 JSON 格式，不要其他内容。搜索词请尽量拆分为关键词，例如：\"重庆 旅游推荐\"。"
           },
-          {
-            role: "user",
-            content: lastUserMessage.content
-          }
+          ...cleanedMessages
         ];
 
         try {
