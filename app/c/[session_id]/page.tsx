@@ -437,7 +437,7 @@ const Page = () => {
         <ChatList
           status={status}
           messages={messages}
-          className="pt-16 pb-60 max-w-3xl mx-auto"
+          className="pt-8 pb-60 max-w-3xl mx-auto"
         />
       </div>
 
@@ -460,7 +460,7 @@ const Page = () => {
 
         <ChatInput
           models={models}
-          className="mx-auto max-w-3xl bg-background shadow-xl"
+          className="mx-auto max-w-3xl"
           onSendMessage={onSendMessage}
           status={status}
           onStop={stop}

@@ -3,14 +3,10 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import AppSidebar from "@/components/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
-  title: "OpenAI Chat Web",
+  title: "Hcz Chat",
   description: "AI Chat Platform powered by OpenAI",
 };
 
@@ -31,13 +27,7 @@ export default async function RootLayout({
           <SidebarProvider>
             <AppSidebar />
 
-            <SidebarInset>
-              <header className="h-16 flex items-center px-4 absolute">
-                <SidebarTrigger className="-ml-1 z-10" />
-              </header>
-
-              {children}
-            </SidebarInset>
+            <SidebarInset>{children}</SidebarInset>
           </SidebarProvider>
         </ThemeProvider>
       </body>

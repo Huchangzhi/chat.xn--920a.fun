@@ -144,8 +144,12 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
-      <div className="flex flex-col justify-center h-full w-full space-y-4 px-4">
-        <div className="font-bold text-2xl mx-auto font-mono">
+      <div className="relative flex flex-col justify-center h-full w-full gap-3 px-4">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-[42%] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--dsw-static-deepseek-500)] opacity-20 blur-3xl"
+        />
+        <div className="relative text-center text-[26px] leading-[32px] font-medium text-[var(--dsw-alias-label-primary)]">
           How can I assist you today?
         </div>
         <ChatInput

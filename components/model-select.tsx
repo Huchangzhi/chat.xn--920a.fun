@@ -364,9 +364,12 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
         }}>
           <PopoverTrigger asChild>
             {selectedModel && (
-              <Button variant="ghost">
+              <Button
+                variant="ghost"
+                className="h-7 rounded-lg border-none bg-transparent px-2 pr-5 text-[13px] font-medium leading-5 text-[var(--dsw-alias-label-secondary)] hover:bg-[var(--dsw-alias-interactive-bg-hover)] hover:text-[var(--dsw-alias-label-secondary)]"
+              >
                 {selectedModel.name}
-                <ChevronDown />
+                <ChevronDown className="size-3" />
               </Button>
             )}
           </PopoverTrigger>
@@ -417,7 +420,7 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
                       }
                     }
                   }}
-                  className="border rounded px-2 py-1 text-sm bg-background"
+                  className="h-7 rounded-lg border border-border bg-background text-sm"
                 >
                   {getSubCategories(category).map((subCategoryOption) => (
                     <option key={subCategoryOption} value={subCategoryOption}>{subCategoryOption}</option>
@@ -444,9 +447,12 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
       }}>
         <DrawerTrigger asChild>
           {selectedModel && (
-            <Button variant="ghost">
+            <Button
+              variant="ghost"
+              className="h-7 rounded-lg border-none bg-transparent px-2 pr-5 text-[13px] font-medium leading-5 text-[var(--dsw-alias-label-secondary)] hover:bg-[var(--dsw-alias-interactive-bg-hover)] hover:text-[var(--dsw-alias-label-secondary)]"
+            >
               {selectedModel.name}
-              <ChevronDown />
+              <ChevronDown className="size-3" />
             </Button>
           )}
         </DrawerTrigger>
@@ -500,7 +506,7 @@ const ModelSelect = ({ selectedModel, setSelectedModel, models }: ModelSelectPro
                     }
                   }
                 }}
-                className="border rounded px-2 py-1 text-sm bg-background"
+                className="h-7 rounded-lg border border-border bg-background text-sm"
               >
                 {getSubCategories(category).map((subCategoryOption) => (
                   <option key={subCategoryOption} value={subCategoryOption}>{subCategoryOption}</option>

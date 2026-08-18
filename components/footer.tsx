@@ -13,7 +13,7 @@ const Footer = ({ classname }: { classname?: string }) => {
         target="_blank"
         rel="noopener"
       >
-        OpenAI Chat Web
+        Hcz Chat
       </a>
     </footer>
   );

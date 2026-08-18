@@ -18,13 +18,13 @@ const ChatList = memo(
     className?: string;
   }) => {
     return (
-      <ul className={cn("flex flex-col w-full space-y-1", className)}>
+      <ul className={cn("flex flex-col w-full gap-4", className)}>
         {messages.map((message) => {
           if (message.role === "user") {
             return (
               <li
                 key={message.id}
-                className="self-end max-w-[90%] ani-slide-top"
+                className="self-end max-w-[82%] ani-slide-top"
               >
                 <UserChatItem parts={message.parts} />
               </li>
@@ -33,7 +33,7 @@ const ChatList = memo(
 
           if (message.role === "assistant") {
             return (
-              <li key={message.id} className="ani-slide-top">
+              <li key={message.id} className="self-start ani-slide-top">
                 <AssistantChatItem parts={message.parts} />
               </li>
             );

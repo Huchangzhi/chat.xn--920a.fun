@@ -1,7 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowUp, Loader2, Paperclip, RefreshCw, Square, X } from "lucide-react";
+import {
+  ArrowUp,
+  Loader2,
+  Paperclip,
+  RefreshCw,
+  Search,
+  Square,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -65,12 +73,11 @@ const ChatInput = ({
   });
   const input = form.watch("input");
   const [files, setFiles] = useState<FilePart[]>([]);
-  const [searchEnabled, setSearchEnabled] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true";
-    }
-    return false;
-  });
+  const [searchEnabled, setSearchEnabled] = useState(false);
+
+  useEffect(() => {
+    setSearchEnabled(localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true");
+  }, []);
 
   useEffect(() => {
     if (selectedModel && !selectedModel.input?.includes("image")) {
@@ -172,7 +179,7 @@ const ChatInput = ({
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div
           className={cn(
-            "w-full border-3 rounded-md focus-within:border-primary transition-all",
+            "flex w-full flex-col gap-3 overflow-hidden rounded-[22px] border border-[var(--dsw-alias-border-l2-darkmode-thin)] bg-[var(--dsw-specific-input-major)] pt-2.5 text-base leading-6 shadow-[var(--dsw-shadow-lv2)]",
             className,
           )}
         >
@@ -184,7 +191,7 @@ const ChatInput = ({
                 <FormControl>
                   <Textarea
                     autoFocus
-                    className="border-0 shadow-none focus-visible:ring-0 resize-none max-h-[50vh] scrollbar rounded-b-none rounded-t"
+                    className="border-none bg-transparent px-3 pt-1 pb-0 pl-4 text-base leading-6 resize-none max-h-[50vh] scrollbar shadow-none focus-visible:ring-0 caret-[var(--dsw-alias-state-business-primary)] placeholder:text-[var(--dsw-alias-label-caption)]"
                     placeholder="Text here..."
                     onKeyDown={(event) => {
                       if (
@@ -204,7 +211,7 @@ const ChatInput = ({
             )}
           />
 
-          <ul className="flex px-3 gap-1">
+          <ul className="flex flex-wrap gap-1 px-3">
             {files.map((file, index) => {
               if (file.mediaType.startsWith("image/")) {
                 return (
@@ -238,56 +245,59 @@ const ChatInput = ({
             })}
           </ul>
 
-          <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
-            <ModelSelect
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              models={models}
-            />
+          <div className="flex min-w-0 items-center gap-3 px-2 pb-1.5">
+            <div className="flex min-w-0 items-center gap-2">
+              {selectedModel?.input?.includes("image") && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  type="button"
+                  className="relative size-7 shrink-0 rounded-full bg-[var(--dsw-specific-selector)] text-[var(--dsw-alias-label-primary)] hover:bg-[var(--dsw-alias-interactive-bg-hover-solid)] hover:text-[var(--dsw-alias-label-primary)]"
+                  onClick={onAddFiles}
+                >
+                  <Paperclip className="size-4" />
+                </Button>
+              )}
 
-            {/* 搜索开关 */}
-            <div className="flex items-center space-x-2 px-2">
-              <span className="text-sm">搜索</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={searchEnabled}
-                  onChange={() => setSearchEnabled(!searchEnabled)}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 rounded-full"></div>
-              </label>
+              <button
+                type="button"
+                onClick={() => setSearchEnabled(!searchEnabled)}
+                className={cn(
+                  "flex h-7 shrink-0 items-center gap-1 rounded-lg px-2 text-[13px] font-medium leading-5 transition-colors",
+                  searchEnabled
+                    ? "bg-[var(--dsw-specific-selector)] text-[var(--dsw-alias-label-primary)]"
+                    : "bg-transparent text-[var(--dsw-alias-label-secondary)] hover:bg-[var(--dsw-alias-interactive-bg-hover)]",
+                )}
+              >
+                <Search className="size-3.5" />
+                搜索
+              </button>
             </div>
 
-            
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ModelSelect
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                models={models}
+              />
 
-            {selectedModel?.input?.includes("image") && (
               <Button
                 size="icon"
-                variant="ghost"
-                className="relative"
-                onClick={onAddFiles}
+                type="submit"
+                disabled={
+                  status === "submitted" ||
+                  (input.trim().length === 0 && status === "ready")
+                }
+                className="size-[34px] rounded-full bg-[var(--dsw-alias-button-info-fill)] text-white hover:bg-[var(--dsw-alias-button-info-hover)] disabled:opacity-40"
               >
-                <Paperclip />
+                {status === "ready" && <ArrowUp />}
+                {status === "submitted" && <Loader2 className="animate-spin" />}
+                {status === "streaming" && (
+                  <Square className="fill-primary-foreground" />
+                )}
+                {status === "error" && <RefreshCw />}
               </Button>
-            )}
-
-            <Button
-              size="icon"
-              className="ml-auto"
-              disabled={
-                status === "submitted" ||
-                (input.trim().length === 0 && status === "ready")
-              }
-              type="submit"
-            >
-              {status === "ready" && <ArrowUp />}
-              {status === "submitted" && <Loader2 className="animate-spin" />}
-              {status === "streaming" && (
-                <Square className="fill-primary-foreground" />
-              )}
-              {status === "error" && <RefreshCw />}
-            </Button>
+            </div>
           </div>
         </div>
       </form>

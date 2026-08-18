@@ -16,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,14 +25,16 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { db, type Session } from "@/lib/db";
 
@@ -91,16 +92,40 @@ const AppSidebar = () => {
 
   return (
     <>
-      <Sidebar>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="gap-3 p-1.5 pt-3">
+          <div className="flex min-w-0 items-center justify-between overflow-hidden group-data-[collapsible=icon]:justify-center">
+            <span className="shrink-0 text-lg font-semibold text-[var(--dsw-alias-label-primary)] group-data-[collapsible=icon]:hidden">
+              Hcz Chat
+            </span>
+            <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />
+          </div>
+          <Link
+            href="/"
+            className="flex h-[38px] items-center justify-center gap-1.5 rounded-xl border border-[var(--dsw-alias-border-l2)] bg-[var(--dsw-alias-button-elevated-fill)] px-4 text-sm font-medium text-[var(--dsw-alias-label-primary)] transition-colors hover:bg-[var(--dsw-alias-button-floating-hover)] group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:self-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:px-0"
+          >
+            <Plus className="size-4 shrink-0" />
+            <span className="group-data-[collapsible=icon]:hidden">
+              New Session
+            </span>
+          </Link>
+        </SidebarHeader>
+
         <SidebarContent>
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
-              <SidebarGroupLabel>{type}</SidebarGroupLabel>
+              <SidebarGroupLabel className="px-2 text-xs font-medium uppercase tracking-wide text-[var(--dsw-alias-label-caption)]">
+                {type}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {sessions.map(({ id, name }) => (
                     <SidebarMenuItem key={id}>
-                      <SidebarMenuButton asChild isActive={session_id === id}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={session_id === id}
+                        className="h-8 rounded-lg px-2 text-sm text-[var(--dsw-alias-label-primary)] hover:bg-[var(--dsw-specific-sidebar-nav-item-hover)] hover:text-[var(--dsw-alias-label-primary)] data-[active=true]:bg-[var(--dsw-specific-sidebar-nav-item-active)] data-[active=true]:text-[var(--dsw-alias-label-primary)]"
+                      >
                         <Link href={`/c/${id}`}>
                           {name}
                           <LoadingIndicator className="ml-auto" />
@@ -133,18 +158,8 @@ const AppSidebar = () => {
             </SidebarGroup>
           ))}
         </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem className="flex items-center">
-              <Link href="/" className="ml-auto">
-                <Button variant="ghost">
-                  New Chat
-                  <Plus />
-                </Button>
-              </Link>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
+
+        <SidebarRail />
       </Sidebar>
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

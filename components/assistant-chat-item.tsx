@@ -1,4 +1,5 @@
 import type { MessagePart } from "@/lib/db";
+import { cn } from "@/lib/utils";
 import {
   Accordion,
   AccordionContent,
@@ -74,7 +75,7 @@ const AssistantChatItem = ({
   const displayParts = parseParts();
 
   return (
-    <div className={className}>
+    <div className={cn("w-full", className)}>
       {displayParts.map((part, index) => {
         if (part.type === "text") {
           return <MarkdownLatexRenderer key={`text-${index}`} content={part.text} />;
@@ -85,12 +86,12 @@ const AssistantChatItem = ({
             <Accordion key={`reasoning-${index}`} type="single" collapsible>
               <AccordionItem value={`reasoning-${index}`}>
                 <AccordionTrigger>
-                  <div className="flex items-center">
+                  <div className="flex items-center text-[var(--dsw-alias-label-tertiary)]">
                     <Brain className="size-4 mr-2" />
                     Reasoning
                   </div>
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="text-[var(--dsw-alias-label-tertiary)]">
                   <MarkdownLatexRenderer mode="static" content={part.text} />
                 </AccordionContent>
               </AccordionItem>
